@@ -1,0 +1,217 @@
+---
+title: "Signature Matching"
+author: "Hengxin Pan"
+date: "`r Sys.Date()`"
+output: BiocStyle::html_document
+vignette: >
+  %\VignetteIndexEntry{Signature Matching}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+# Signature Matching with CONCERTDR
+
+This vignette demonstrates how to match drug response signatures against reference profiles extracted from the CMap database using the CONCERTDR package. We'll cover the various matching methods available and how to interpret the results.
+
+## Prerequisites
+
+Before using this vignette, you should have:
+
+1. Extracted data from the CMap database using the workflow described in the [CMap Workflow vignette](cmap_workflow.html)
+2. Prepared a signature file with genes and their log2 fold change values
+
+```{r setup}
+library(CONCERTDR)
+```
+
+## Signature File Format
+
+The signature file should be a tab-delimited text file with at least two columns:
+
+1. `Gene`: Gene symbols matching those in the CMap database
+2. `log2FC`: Log2 fold change values for each gene
+
+Example signature file format:
+```
+Gene	log2FC
+STAT3	2.5
+TP53	-1.8
+MYC	3.2
+BRCA1	-2.1
+...
+```
+
+## Available Matching Methods
+
+CONCERTDR provides access to various signature matching methods through the RCSM package:
+
+1. **KS Score** (`ks`): Kolmogorov-Smirnov statistic based method
+2. **XCos Score** (`xcos`): Extended cosine similarity method
+3. **XSum Score** (`xsum`): Extended sum score method
+4. **GSEA Weight 0 Score** (`gsea0`): Gene Set Enrichment Analysis without weighting
+5. **GSEA Weight 1 Score** (`gsea1`): Gene Set Enrichment Analysis with weight 1
+6. **GSEA Weight 2 Score** (`gsea2`): Gene Set Enrichment Analysis with weight 2
+7. **Zhang Score** (`zhang`): Method from Zhang et al.
+
+## Matching a Signature against Reference Data
+
+After extracting reference data from CMap (see the CMap Workflow vignette), you can match your signature against it:
+
+```{r match_signature}
+# Path to your signature file
+signature_file <- "path/to/signature.txt"
+
+# Path to reference data directory (from CMap extraction)
+reference_file <- "output/filtered_6_h_10_uM_MCF7.csv"
+
+# Run the analysis with selected methods
+results <- process_signature(
+  signature_file = signature_file,
+  reference_file = reference_file,
+  output_prefix = "results/my_analysis",
+  permutations = 1000,  # Number of permutations for statistical testing
+  methods = c("ks", "xcos", "gsea1")  # Selected methods
+)
+```
+
+## Working with Multiple Reference Files
+
+If you have extracted data for multiple conditions (time points, dosages, cell lines), you can process them all at once:
+
+```{r multiple_refs}
+# Option 1: Using a combinations file (from cmap_workflow)
+all_results <- run_analysis_with_combinations(
+  combinations_file = "combinations.txt",
+  sig_file = "path/to/signature.txt",
+  out_dir = "results",
+  methods = c("ks", "xcos"),
+  permutations = 1000
+)
+
+# Option 2: Using a pattern to match reference files
+all_results <- run_analysis(
+  ref_pattern = "output/filtered_*.csv",
+  sig_file = "path/to/signature.txt",
+  out_dir = "results"
+)
+```
+
+## Working with Reference Data in a Data Frame
+
+If you've used `extract_cmap_data_from_config()` to get all the data in a single data frame, you can directly process it:
+
+```{r dataframe_matching}
+# First extract the combined data
+combined_data <- extract_cmap_data_from_config(
+  config_file = "conf/my_config.conf",
+  geneinfo_file = "path/to/geneinfo_beta.txt",
+  siginfo_file = "path/to/siginfo_beta.txt",
+  gctx_file = "path/to/level5_beta_trt_cp_n720216x12328.gctx"
+)
+
+# Then match your signature against it
+results <- process_signature_with_df(
+  signature_file = "path/to/signature.txt",
+  reference_df = combined_data,
+  output_dir = "results",
+  permutations = 1000,
+  methods = c("ks", "xsum", "gsea0")
+)
+```
+
+## Complete Workflow in One Function
+
+For convenience, CONCERTDR provides a function that combines the extraction and matching steps:
+
+```{r complete_workflow}
+all_results <- run_cmap_workflow(
+  config_file = "conf/my_config.conf", 
+  signature_file = "path/to/signature.txt",
+  geneinfo_file = "path/to/geneinfo_beta.txt",
+  siginfo_file = "path/to/siginfo_beta.txt",
+  gctx_file = "path/to/level5_beta_trt_cp_n720216x12328.gctx",
+  output_dir = "results",
+  methods = c("ks", "xcos"),
+  permutations = 1000
+)
+```
+
+## Interpreting Results
+
+The output of signature matching is a list of data frames, one for each method used. Each data frame contains the following columns:
+
+- `compound`: Compound identifier (from CMap)
+- `Score`: Matching score (higher absolute value indicates stronger correlation)
+- `pValue`: P-value from permutation testing (lower indicates higher statistical significance)
+
+In addition, a summary file is created that combines the top hits from all methods.
+
+```{r examine_results}
+# First load the results from file (if needed)
+ks_results <- read.csv("results/sig_match_ks_results.csv")
+
+# Sort by score (descending)
+ks_results <- ks_results[order(-ks_results$Score), ]
+
+# View top compounds
+head(ks_results)
+
+# Filter by p-value significance
+significant_hits <- ks_results[ks_results$pValue < 0.05, ]
+```
+
+## Visualizing Results
+
+You can create visualizations of your results (not included in CONCERTDR, but using standard R plotting):
+
+```{r visualize, eval=FALSE}
+library(ggplot2)
+
+# Create a bar plot of top 20 compounds by score
+ggplot(ks_results[1:20, ], aes(x = reorder(compound, Score), y = Score)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  labs(x = "Compound", y = "KS Score", title = "Top 20 Compounds by KS Score") +
+  theme_minimal()
+
+# Create a volcano plot
+ggplot(ks_results, aes(x = Score, y = -log10(pValue))) +
+  geom_point(aes(color = abs(Score) > 0.5 & pValue < 0.05)) +
+  labs(x = "KS Score", y = "-log10(p-value)", title = "Volcano Plot of KS Scores") +
+  theme_minimal()
+```
+
+## Choosing the Right Matching Method
+
+Different signature matching methods have different strengths and are suited to different types of data:
+
+- **KS Score**: General-purpose method, good for most applications
+- **XCos and XSum**: Better for signatures with both up and down-regulated genes
+- **GSEA methods**: Good for signatures with many genes, incorporates gene ranking
+- **Zhang method**: Alternative approach that may work better for certain data types
+
+It's often a good idea to try multiple methods and compare the results.
+
+## Interactive Method Selection
+
+If you're not sure which methods to use, CONCERTDR provides an interactive selection function:
+
+```{r interactive_methods}
+methods <- select_methods_interactive()
+```
+
+This will display a menu of available methods with descriptions and let you choose which ones to use.
+
+## Session Info
+
+```{r session-info, eval=TRUE}
+sessionInfo()
+```
