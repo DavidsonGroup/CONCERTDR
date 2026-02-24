@@ -58,19 +58,16 @@ files are not written unless \code{write_outputs = TRUE}.}
 }
 \value{
 A named list with:
-\itemize{
-\item \code{wetlab_drug_view}
-\item \code{wetlab_gene_view}
-\item \code{tech_view_all}
-\item \code{drug_context_summary}
-\item \code{output_files}
-}
+  \item{wetlab_drug_view}{Drug-focused wetlab view}
+  \item{wetlab_gene_view}{Gene-focused wetlab view}
+  \item{tech_view_all}{Full technical table with all integrated fields}
+  \item{drug_context_summary}{Per-drug context summary}
+  \item{output_files}{Named character vector of written files (if any)}
 }
 \description{
 Integrate signature matching results with annotations from
-\code{siginfo_beta.txt} and \code{compoundinfo_beta.txt}. The function maps
-\code{pert_type} to coarse categories and mode labels, parses compound context,
-and prepares wetlab and technical output tables.
+\code{siginfo_beta.txt} and \code{compoundinfo_beta.txt}. It produces
+three analysis-ready tables and one drug context summary table.
 }
 \examples{
 \dontrun{

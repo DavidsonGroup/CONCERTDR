@@ -7,9 +7,9 @@
 demonstrate_workflow(
   demo_dir = "CONCERTDR_demo",
   use_minimal = TRUE,
-  gctx_file = "inst/extdata/level5_beta_trt_cp_n720216x12328.gctx",
-  geneinfo_file = "inst/extdata/geneinfo_beta.txt",
-  siginfo_file = "inst/extdata/siginfo_beta.txt"
+  gctx_file = NULL,
+  geneinfo_file = NULL,
+  siginfo_file = NULL
 )
 }
 \arguments{
