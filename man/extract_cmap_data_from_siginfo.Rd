@@ -29,6 +29,8 @@ extract_cmap_data_from_siginfo(
 \item{keep_all_genes}{Logical; whether to keep all genes (TRUE) or only common genes (FALSE) (default: TRUE)}
 
 \item{verbose}{Logical; whether to print progress messages (default: TRUE)}
+
+\item{landmark}{Logical; whether to restrict to landmark genes only (default: TRUE)}
 }
 \value{
 A data frame with expression data for all signatures, with annotation

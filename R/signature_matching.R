@@ -30,15 +30,15 @@ process_signature_with_df <- function(signature_file, reference_df, output_dir =
       "Please install it manually, e.g. with remotes::install_github('Jasonlinchina/RCSM')."
     )
   }
-
+  
   # Create output directory if it doesn't exist and files will be saved
   if (save_files && !dir.exists(output_dir)) {
     dir.create(output_dir, recursive = TRUE)
   }
-
+  
   # Record start time for performance tracking
   start_time <- Sys.time()
-
+  
   # Read the signature file
   message("Reading signature data from ", signature_file)
   tryCatch({
@@ -62,60 +62,60 @@ process_signature_with_df <- function(signature_file, reference_df, output_dir =
   }, error = function(e) {
     stop("Error reading signature file: ", e$message)
   })
-
+  
   # Check if required columns exist
   if (!all(c("Gene", "log2FC") %in% colnames(gene_data))) {
     stop("Signature file must contain 'Gene' and 'log2FC' columns")
   }
-
+  
   # Separate up and down regulated genes based on log2FC values
   Up <- gene_data$Gene[gene_data$log2FC > 0]
   Down <- gene_data$Gene[gene_data$log2FC < 0]
-
+  
   if (length(Up) == 0 || length(Down) == 0) {
     stop("Signature file must contain both up-regulated (log2FC > 0) and down-regulated (log2FC < 0) genes")
   }
-
+  
   # Define query (all genes with their ranks)
   query_genes <- gene_data$Gene
   ranks <- rank(-gene_data$log2FC)  # Rank by decreasing log2FC
   query <- stats::setNames(ranks, query_genes)
-
+  
   # Prepare reference data for processing
   message("Preparing reference data for analysis...")
-
+  
   # Check if reference_df has gene_symbol column
   if (!("gene_symbol" %in% colnames(reference_df))) {
     stop("Reference dataframe must contain a 'gene_symbol' column")
   }
-
+  
   # Create reference matrix with genes as row names
   ref_data <- reference_df
   rownames(ref_data) <- ref_data$gene_symbol
   ref_data$gene_symbol <- NULL
-
+  
   # Convert to matrix format required by RCSM
   ref <- as.matrix(ref_data)
-
+  
   # Verify genes exist in reference
   common_up <- intersect(Up, rownames(ref))
   common_down <- intersect(Down, rownames(ref))
-
+  
   # Calculate percent overlap to assess gene coverage
   pct_up <- round(length(common_up) / length(Up) * 100, 1)
   pct_down <- round(length(common_down) / length(Down) * 100, 1)
-
+  
   message(sprintf("Found %d/%d up-regulated genes (%g%%) and %d/%d down-regulated genes (%g%%) in reference",
                   length(common_up), length(Up), pct_up,
                   length(common_down), length(Down), pct_down))
-
+  
   if (length(common_up) == 0 || length(common_down) == 0) {
     stop("No matching genes found in reference data. Please check your signature genes.")
   }
-
+  
   # Initialize results list
   all_results <- list()
-
+  
   # Store metadata about the analysis
   settings <- list(
     signature_file = signature_file,
@@ -126,51 +126,51 @@ process_signature_with_df <- function(signature_file, reference_df, output_dir =
     reference_dimensions = dim(ref),
     reference_genes = length(rownames(ref))
   )
-
+  
   # Available methods
   all_methods <- list(
     ks = function() {
       message("Running KS score...")
       RCSM::KSScore(refMatrix = ref, queryUp = common_up, queryDown = common_down, permuteNum = permutations)
     },
-
+    
     xcos = function() {
       message(sprintf("Running XCos score with topN = %d...", topN))
       RCSM::XCosScore(refMatrix = ref, query = query[query_genes %in% rownames(ref)],
                       topN = topN, permuteNum = permutations)
     },
-
+    
     xsum = function() {
       message(sprintf("Running XSum score with topN = %d...", topN))
       RCSM::XSumScore(refMatrix = ref, queryUp = common_up, queryDown = common_down,
                       topN = topN, permuteNum = permutations)
     },
-
+    
     gsea0 = function() {
       message("Running GSEA weight 0 score...")
       RCSM::GSEAweight0Score(refMatrix = ref, queryUp = common_up, queryDown = common_down,
                              permuteNum = permutations)
     },
-
+    
     gsea1 = function() {
       message("Running GSEA weight 1 score...")
       RCSM::GSEAweight1Score(refMatrix = ref, queryUp = common_up, queryDown = common_down,
                              permuteNum = permutations)
     },
-
+    
     gsea2 = function() {
       message("Running GSEA weight 2 score...")
       RCSM::GSEAweight2Score(refMatrix = ref, queryUp = common_up, queryDown = common_down,
                              permuteNum = permutations)
     },
-
+    
     zhang = function() {
       message("Running Zhang score...")
       RCSM::ZhangScore(refMatrix = ref, queryUp = common_up, queryDown = common_down,
                        permuteNum = permutations)
     }
   )
-
+  
   # Validate selected methods
   invalid_methods <- setdiff(methods, names(all_methods))
   if (length(invalid_methods) > 0) {
@@ -178,27 +178,27 @@ process_signature_with_df <- function(signature_file, reference_df, output_dir =
             ". Will be ignored.")
     methods <- intersect(methods, names(all_methods))
   }
-
+  
   if (length(methods) == 0) {
     stop("No valid methods to run. Valid methods are: ", paste(names(all_methods), collapse = ", "))
   }
-
+  
   # Run selected scoring methods
   for (method in methods) {
     tryCatch({
       result_df <- all_methods[[method]]()
-
+      
       # Add compound names if not already included
       if (!("compound" %in% colnames(result_df))) {
         result_df <- cbind(compound = rownames(result_df), result_df)
       }
-
+      
       # Add rank column for easier interpretation
       result_df$rank <- rank(-result_df$Score)
-
+      
       # Store in results list
       all_results[[method]] <- result_df
-
+      
       # Save individual results if requested
       if (save_files) {
         output_file <- file.path(output_dir, paste0("sig_match_", method, "_results.csv"))
@@ -216,25 +216,25 @@ process_signature_with_df <- function(signature_file, reference_df, output_dir =
       all_results[[method]]$error <- e$message
     })
   }
-
+  
   # Create summary of top hits across all methods
   summary_df <- create_summary_from_results(all_results)
-
+  
   # Save summary file if requested
   if (save_files) {
     summary_file <- file.path(output_dir, "summary_results.csv")
     utils::write.csv(summary_df, file = summary_file, row.names = FALSE)
     message("Saved summary report to ", summary_file)
   }
-
+  
   # Record end time
   end_time <- Sys.time()
   time_taken <- difftime(end_time, start_time, units = "mins")
-
+  
   # Update settings with completion info
   settings$time_completed <- end_time
   settings$time_taken_mins <- as.numeric(time_taken)
-
+  
   # Create a structured result object
   result_object <- structure(
     list(
@@ -249,7 +249,7 @@ process_signature_with_df <- function(signature_file, reference_df, output_dir =
     ),
     class = "cmap_signature_result"
   )
-
+  
   # Return the complete result object
   return(result_object)
 }
@@ -272,24 +272,24 @@ create_summary_from_results <- function(results_list, top_n = 20) {
     rank = integer(),
     stringsAsFactors = FALSE
   )
-
+  
   # Extract top hits from each method
   for (method_name in names(results_list)) {
     result <- results_list[[method_name]]
-
+    
     # Skip if error or empty
     if (nrow(result) == 0 || "error" %in% colnames(result)) {
       next
     }
-
+    
     # Make sure rank column exists
     if (!"rank" %in% colnames(result)) {
       result$rank <- rank(-result$Score)
     }
-
+    
     # Get top hits
     top_hits <- result[result$rank <= top_n, ]
-
+    
     if (nrow(top_hits) > 0) {
       top_hits$method <- method_name
       summary_df <- rbind(
@@ -298,22 +298,22 @@ create_summary_from_results <- function(results_list, top_n = 20) {
       )
     }
   }
-
+  
   # Sort by method and rank
   summary_df <- summary_df[order(summary_df$method, summary_df$rank), ]
-
+  
   # Add global rank across methods
   if (nrow(summary_df) > 0) {
     # Calculate a weighted score considering both Score and p-value
     summary_df$weighted_score <- summary_df$Score * (1 - summary_df$pValue)
-
+    
     # Rank across all methods
     summary_df$global_rank <- rank(-summary_df$weighted_score)
-
+    
     # Remove the temporary weighted score column
     summary_df$weighted_score <- NULL
   }
-
+  
   return(summary_df)
 }
 
@@ -328,12 +328,12 @@ create_summary_from_results <- function(results_list, top_n = 20) {
 print.cmap_signature_result <- function(x, ...) {
   cat("CMap Signature Matching Results\n")
   cat("===============================\n\n")
-
+  
   # Print basic information
   cat(sprintf("Signature file: %s\n", x$settings$signature_file))
   cat(sprintf("Analysis completed: %s\n", format(x$settings$time_completed)))
   cat(sprintf("Time taken: %.2f minutes\n\n", x$settings$time_taken_mins))
-
+  
   # Print methods used
   cat("Methods used:\n")
   for (method in names(x$results)) {
@@ -344,7 +344,7 @@ print.cmap_signature_result <- function(x, ...) {
       cat(sprintf("  - %s: %d results\n", method, nrow(result)))
     }
   }
-
+  
   # Print gene coverage
   cat("\nGene coverage:\n")
   cat(sprintf("  Up-regulated: %d/%d genes (%.1f%%)\n",
@@ -353,12 +353,12 @@ print.cmap_signature_result <- function(x, ...) {
   cat(sprintf("  Down-regulated: %d/%d genes (%.1f%%)\n",
               x$common_genes$down$count, length(x$gene_data$Gene[x$gene_data$log2FC < 0]),
               x$common_genes$down$percent))
-
+  
   # Print top compounds from summary (if available)
   if (nrow(x$summary) > 0) {
     top_n <- min(5, nrow(x$summary))
     top_compounds <- x$summary[order(x$summary$global_rank)[1:top_n], ]
-
+    
     cat("\nTop compounds across all methods:\n")
     for (i in 1:nrow(top_compounds)) {
       cat(sprintf("  %d. %s (method: %s, score: %.4f, p-value: %.4f)\n",
@@ -366,7 +366,7 @@ print.cmap_signature_result <- function(x, ...) {
                   top_compounds$Score[i], top_compounds$pValue[i]))
     }
   }
-
+  
   cat("\nUse the following to explore the results:\n")
   cat("  - $results: List of result data frames for each method\n")
   cat("  - $summary: Summary of top hits across all methods\n")
@@ -374,7 +374,7 @@ print.cmap_signature_result <- function(x, ...) {
   cat("  - $settings: Analysis settings and metadata\n")
   cat("  - $common_genes: Genes found in the reference data\n")
   cat("\nExample: result_obj$results$ks to view KS score results\n")
-
+  
   invisible(x)
 }
 
@@ -392,17 +392,17 @@ summary.cmap_signature_result <- function(object, top_n = 10, ...) {
     message("No summary data available.")
     return(NULL)
   }
-
+  
   # Get top compounds across all methods
   top_compounds <- object$summary[order(object$summary$global_rank), ]
-
+  
   # Limit to requested number
-  top_compounds <- head(top_compounds, top_n)
-
+  top_compounds <- utils::head(top_compounds, top_n)
+  
   # Print a summary
   cat("Top", top_n, "compounds across all methods:\n\n")
   print(top_compounds[, c("compound", "method", "Score", "pValue", "global_rank")])
-
+  
   # Return the data invisibly
   invisible(top_compounds)
 }
@@ -423,7 +423,7 @@ plot.cmap_signature_result <- function(x, method = NULL, plot_type = "scores", t
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("Package 'ggplot2' is required for plotting. Please install it with: install.packages('ggplot2')")
   }
-
+  
   # If method is not specified, use the first available method
   if (is.null(method)) {
     if (length(x$results) == 0) {
@@ -431,26 +431,26 @@ plot.cmap_signature_result <- function(x, method = NULL, plot_type = "scores", t
     }
     method <- names(x$results)[1]
   }
-
+  
   # Check if the specified method exists
   if (!method %in% names(x$results)) {
     stop("Method '", method, "' not found in results. Available methods: ",
          paste(names(x$results), collapse = ", "))
   }
-
+  
   # Get the data for the specified method
   result_df <- x$results[[method]]
-
+  
   # Check if there was an error with this method
   if ("error" %in% colnames(result_df)) {
     stop("Cannot plot results for method '", method, "' due to error: ", result_df$error[1])
   }
-
+  
   # Different plot types
   if (plot_type == "scores") {
     # Bar plot of top scores
     top_df <- result_df[order(-result_df$Score), ][1:min(top_n, nrow(result_df)), ]
-
+    
     p <- ggplot2::ggplot(top_df, ggplot2::aes(x = reorder(compound, Score), y = Score)) +
       ggplot2::geom_bar(stat = "identity", fill = "steelblue") +
       ggplot2::coord_flip() +
@@ -460,7 +460,7 @@ plot.cmap_signature_result <- function(x, method = NULL, plot_type = "scores", t
         y = paste(method, "Score")
       ) +
       ggplot2::theme_minimal()
-
+    
   } else if (plot_type == "volcano") {
     # Volcano plot of scores vs p-values
     p <- ggplot2::ggplot(result_df, ggplot2::aes(x = Score, y = -log10(pValue))) +
@@ -474,17 +474,17 @@ plot.cmap_signature_result <- function(x, method = NULL, plot_type = "scores", t
         y = "-log10(p-value)"
       ) +
       ggplot2::theme_minimal()
-
+    
   } else if (plot_type == "heatmap") {
     stop(
       "plot_type='heatmap' is not currently supported for cmap_signature_result objects ",
       "because the object does not store expression matrices required for heatmap rendering."
     )
-
+    
   } else {
     stop("Invalid plot_type: '", plot_type, "'. Must be one of: 'scores', 'volcano', 'heatmap'")
   }
-
+  
   return(p)
 }
 #' Complete workflow from configuration to signature matching
@@ -516,7 +516,7 @@ run_cmap_workflow <- function(config_file, signature_file,
                               keep_all_genes = TRUE,
                               read_method = "auto",
                               verbose = TRUE) {
-
+  
   # Step 1: Extract CMap data based on config file
   if (verbose) message("Step 1: Extracting CMap data based on configuration...")
   reference_df <- extract_cmap_data_from_config(
@@ -527,11 +527,11 @@ run_cmap_workflow <- function(config_file, signature_file,
     keep_all_genes = keep_all_genes,
     verbose = verbose
   )
-
+  
   if (nrow(reference_df) == 0) {
     stop("No data extracted from CMap. Please check your configuration and input files.")
   }
-
+  
   # Step 2: Process signature against the extracted data
   if (verbose) message("\nStep 2: Processing signature against reference data...")
   results <- process_signature_with_df(
@@ -543,7 +543,7 @@ run_cmap_workflow <- function(config_file, signature_file,
     topN = topN,
     read_method = read_method
   )
-
+  
   if (verbose) message("\nWorkflow completed successfully!")
   return(results)
 }

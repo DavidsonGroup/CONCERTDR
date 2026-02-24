@@ -52,7 +52,7 @@ extract_signature_zscores <- function(results_df,
   if (!pert_id_col %in% names(results_df)) stop("results_df must contain pert_id_col: ", pert_id_col)
   if (!score_col %in% names(results_df)) stop("results_df must contain score_col: ", score_col)
   if (!file.exists(signature_file)) stop("signature_file not found: ", signature_file)
-
+  
   first_existing <- function(candidates) {
     candidates <- as.character(candidates)
     candidates <- candidates[!is.na(candidates) & nzchar(candidates)]
@@ -61,10 +61,10 @@ extract_signature_zscores <- function(results_df,
     if (length(ok) == 0) return(NULL)
     ok[1]
   }
-
+  
   gctx_default_name <- "level5_beta_all_n1201944x12328.gctx"
   example_gctx      <- system.file("extdata", "example_data.gctx", package = "CONCERTDR")
-
+  
   gctx_file <- first_existing(c(
     gctx_file,
     getOption("CONCERTDR.gctx_file", NULL),
@@ -77,9 +77,9 @@ extract_signature_zscores <- function(results_df,
     stop("Could not resolve gctx_file. Provide gctx_file explicitly, or set ",
          "options(CONCERTDR.gctx_file='...') or data_dir containing ", gctx_default_name)
   }
-
+  
   inferred_data_dir <- if (!is.null(data_dir) && nzchar(data_dir)) data_dir else dirname(gctx_file)
-
+  
   geneinfo_file <- first_existing(c(
     geneinfo_file,
     getOption("CONCERTDR.geneinfo_file", NULL),
@@ -91,7 +91,7 @@ extract_signature_zscores <- function(results_df,
     stop("Could not resolve geneinfo_file. Provide geneinfo_file explicitly, or set ",
          "options(CONCERTDR.geneinfo_file='...') or data_dir containing geneinfo_beta.txt")
   }
-
+  
   siginfo_file <- first_existing(c(
     siginfo_file,
     getOption("CONCERTDR.siginfo_file", NULL),
@@ -99,14 +99,14 @@ extract_signature_zscores <- function(results_df,
     if (!is.null(inferred_data_dir) && nzchar(inferred_data_dir)) file.path(inferred_data_dir, "siginfo_beta.txt") else NULL,
     "siginfo_beta.txt"
   ))
-
+  
   if (verbose) {
     message("Using files:")
     message(" - gctx_file: ", gctx_file)
     message(" - geneinfo_file: ", geneinfo_file)
     if (!is.null(siginfo_file)) message(" - siginfo_file: ", siginfo_file)
   }
-
+  
   # gene symbol -> gene id
   geneinfo <- if (requireNamespace("data.table", quietly = TRUE)) {
     data.table::fread(geneinfo_file, data.table = FALSE)
@@ -122,7 +122,7 @@ extract_signature_zscores <- function(results_df,
   geneinfo <- geneinfo[!is.na(geneinfo$gene_symbol) & !is.na(geneinfo$gene_id), c("gene_symbol", "gene_id")]
   gene_map <- as.character(geneinfo$gene_id)
   names(gene_map) <- geneinfo$gene_symbol
-
+  
   # signature genes and order (down then up)
   sig <- if (requireNamespace("data.table", quietly = TRUE)) {
     data.table::fread(signature_file, data.table = FALSE)
@@ -136,27 +136,27 @@ extract_signature_zscores <- function(results_df,
   sig[[gene_col]]   <- toupper(as.character(sig[[gene_col]]))
   sig[[log2fc_col]] <- suppressWarnings(as.numeric(sig[[log2fc_col]]))
   sig <- sig[!is.na(sig[[gene_col]]) & nzchar(sig[[gene_col]]) & !is.na(sig[[log2fc_col]]), , drop = FALSE]
-  if (!is.null(max_genes)) sig <- head(sig, max_genes)
+  if (!is.null(max_genes)) sig <- utils::head(sig, max_genes)
   sig <- sig[sig[[gene_col]] %in% names(gene_map), , drop = FALSE]
   if (nrow(sig) == 0) stop("No signature genes mapped to geneinfo gene_id")
-
+  
   down <- sig[sig[[log2fc_col]] < 0, , drop = FALSE]
   down <- down[order(down[[log2fc_col]], decreasing = FALSE), , drop = FALSE]
   up   <- sig[sig[[log2fc_col]] > 0, , drop = FALSE]
   up   <- up[order(up[[log2fc_col]], decreasing = TRUE), , drop = FALSE]
-
+  
   ordered_genes <- c(as.character(down[[gene_col]]), as.character(up[[gene_col]]))
   ordered_genes <- ordered_genes[nzchar(ordered_genes)]
   if (length(ordered_genes) == 0) stop("No ordered genes available after down/up split")
   ordered_ids <- unname(gene_map[ordered_genes])
   logfc_map   <- sig[[log2fc_col]]
   names(logfc_map) <- sig[[gene_col]]
-
+  
   # select perturbations by score
   tech <- results_df
   tech[[score_col]] <- suppressWarnings(as.numeric(tech[[score_col]]))
   tech <- tech[!is.na(tech[[score_col]]) & !is.na(tech[[pert_id_col]]), , drop = FALSE]
-
+  
   if (!is.null(selected_drug)) {
     drug_col <- selected_drug_col
     if (is.null(drug_col)) {
@@ -168,7 +168,7 @@ extract_signature_zscores <- function(results_df,
     tech <- tech[keep, , drop = FALSE]
     if (verbose) message("Filtered rows for selected_drug using ", drug_col, ": ", nrow(tech))
   }
-
+  
   tech    <- tech[order(tech[[score_col]], decreasing = FALSE), , drop = FALSE]
   tech    <- head(tech, max_perts)
   sig_ids <- as.character(tech[[pert_id_col]])
@@ -176,7 +176,7 @@ extract_signature_zscores <- function(results_df,
   sig_ids <- unique(sig_ids)
   if (length(sig_ids) == 0) stop("No perturbation ids selected")
   if (verbose) message("Perturbations selected: ", length(sig_ids))
-
+  
   # optional labels from siginfo
   sig_labels <- sig_ids
   if (!is.null(siginfo_file)) {
@@ -208,7 +208,7 @@ extract_signature_zscores <- function(results_df,
       sig_labels <- vapply(sig_ids, make_label, character(1))
     }
   }
-
+  
   # read z-scores from GCTX
   gct   <- cmapR::parse_gctx(fname = gctx_file, rid = as.character(ordered_ids), cid = sig_ids)
   z_mat <- cmapR::mat(gct)
@@ -216,17 +216,17 @@ extract_signature_zscores <- function(results_df,
   rownames(z_mat) <- ordered_genes
   z_plot          <- t(z_mat)          # rows = perturbations, cols = genes
   rownames(z_plot) <- sig_labels
-
+  
   if (nrow(z_plot) == 0 || ncol(z_plot) == 0) {
     stop("No data available after GCTX extraction")
   }
-
+  
   if (!is.null(output_zscores)) {
     utils::write.table(as.data.frame(z_plot), file = output_zscores, sep = "\t",
                        quote = FALSE, row.names = TRUE, col.names = NA)
     if (verbose) message("Saved z-score matrix: ", output_zscores)
   }
-
+  
   list(
     z_plot        = z_plot,
     ordered_genes = ordered_genes,
@@ -362,11 +362,11 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
     logfc_map     <- extracted$logfc_map
     sig_ids       <- extracted$sig_ids
   }
-
+  
   if (nrow(z_plot) == 0 || ncol(z_plot) == 0) {
     stop("No data available for heatmap")
   }
-
+  
   # ── ComplexHeatmap ─────────────────────────────────────────────────────────
   if (!requireNamespace("ComplexHeatmap", quietly = TRUE)) {
     stop(
@@ -378,12 +378,12 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
   if (!requireNamespace("circlize", quietly = TRUE)) {
     stop("Package 'circlize' is required. Install with: install.packages('circlize')")
   }
-
+  
   # z-score colour scale (symmetric around 0)
   zlim <- max(abs(z_plot), na.rm = TRUE)
   if (!is.finite(zlim) || zlim == 0) zlim <- 10
   col_fun <- circlize::colorRamp2(c(-zlim, 0, zlim), c("#3B4CC0", "#F7F7F7", "#B40426"))
-
+  
   # signature log2FC colour strip — BrBG (teal → white → brown).
   # Teal/green = down-regulated (negative log2FC), brown/orange = up-regulated.
   # Completely different hue family from the coolwarm z-score palette so the
@@ -392,7 +392,7 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
   lim           <- max(abs(logfc_vals), na.rm = TRUE)
   if (!is.finite(lim) || lim == 0) lim <- 1
   logfc_col_fun <- circlize::colorRamp2(c(-lim, 0, lim), c("#01665E", "#F5F5F5", "#8C510A"))
-
+  
   top_ann <- ComplexHeatmap::HeatmapAnnotation(
     "Signature log2FC" = logfc_vals,
     col = list("Signature log2FC" = logfc_col_fun),
@@ -406,13 +406,13 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
     show_annotation_name = TRUE,
     annotation_name_gp   = grid::gpar(fontsize = 9)
   )
-
+  
   ttl <- if (is.null(selected_drug)) {
     paste0("Top ", nrow(z_plot), " perturbations by ", score_col)
   } else {
     paste0(selected_drug, " \u2013 Top ", nrow(z_plot), " perturbations by ", score_col)
   }
-
+  
   ht <- ComplexHeatmap::Heatmap(
     z_plot,
     name                   = "z-score",
@@ -442,7 +442,7 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
     use_raster    = TRUE,
     raster_quality = 2
   )
-
+  
   # dynamic figure size: scale with data dimensions if not supplied
   n_cols <- ncol(z_plot)
   n_rows <- nrow(z_plot)
@@ -450,7 +450,7 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
   auto_height <- max(8,  2 + n_rows * 0.28)         # 2in base + ~0.28in/perturbation
   fig_width  <- if (!is.null(width))  width  else auto_width
   fig_height <- if (!is.null(height)) height else auto_height
-
+  
   draw_fn <- function() {
     ComplexHeatmap::draw(
       ht,
@@ -459,7 +459,7 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
       padding                = grid::unit(c(5, 20, 8, 5), "mm")
     )
   }
-
+  
   if (isTRUE(save_png)) {
     grDevices::png(filename = output_png, width = fig_width, height = fig_height,
                    units = "in", res = dpi)
@@ -469,7 +469,7 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
   } else {
     draw_fn()
   }
-
+  
   invisible(list(
     z_plot        = z_plot,
     ordered_genes = ordered_genes,
