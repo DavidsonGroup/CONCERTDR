@@ -56,22 +56,51 @@ fast_parse_gctx <- function(fname, rid = NULL, cid = NULL) {
   rhdf5::h5closeAll()
   on.exit(rhdf5::h5closeAll())
 
-  all_rid <- as.character(rhdf5::h5read(fname, "0/META/ROW/id"))
-  all_cid <- as.character(rhdf5::h5read(fname, "0/META/COL/id"))
+  all_rid <- trimws(as.character(rhdf5::h5read(fname, "0/META/ROW/id")))
+  all_cid <- trimws(as.character(rhdf5::h5read(fname, "0/META/COL/id")))
 
   # Column indices (fast axis – pushed into HDF5)
-  cidx <- if (is.null(cid)) {
-    seq_along(all_cid)
+  if (is.null(cid)) {
+    cidx <- seq_along(all_cid)
   } else {
-    if (is.character(cid)) match(cid, all_cid) else cid
+    cid <- trimws(as.character(cid))
+    matched_c <- match(cid, all_cid)
+    n_found_c <- sum(!is.na(matched_c))
+    n_miss_c  <- sum( is.na(matched_c))
+    if (n_found_c == 0L) {
+      stop(sprintf(
+        paste0("None of the %d requested column IDs were found in the GCTX file.\n",
+               "  Query  (first 3): %s\n",
+               "  GCTX   (first 3): %s\n",
+               "Check that the GCTX file matches the siginfo file."),
+        length(cid),
+        paste(utils::head(cid,    3), collapse = ", "),
+        paste(utils::head(all_cid, 3), collapse = ", ")
+      ))
+    }
+    if (n_miss_c > 0L) {
+      warning(sprintf(
+        "%d of %d requested column IDs were not found in the GCTX file and will be skipped.",
+        n_miss_c, length(cid)
+      ))
+    }
+    cidx <- sort(matched_c[!is.na(matched_c)])
   }
-  cidx <- sort(cidx)
 
   # Row indices (slow axis – filtered in memory)
-  ridx <- if (is.null(rid)) {
-    seq_along(all_rid)
+  if (is.null(rid)) {
+    ridx <- seq_along(all_rid)
   } else {
-    if (is.character(rid)) match(rid, all_rid) else rid
+    rid <- trimws(as.character(rid))
+    matched_r <- match(rid, all_rid)
+    n_miss_r  <- sum(is.na(matched_r))
+    if (n_miss_r > 0L) {
+      warning(sprintf(
+        "%d of %d requested row IDs were not found in the GCTX file and will be skipped.",
+        n_miss_r, length(rid)
+      ))
+    }
+    ridx <- matched_r[!is.na(matched_r)]
   }
 
   # Read all rows × target columns
