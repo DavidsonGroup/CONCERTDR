@@ -1,7 +1,7 @@
 Package: CONCERTDR
 Type: Package
 Title: Drug Response Data Analysis Using CMap Database
-Version: 0.3.0
+Version: 0.4.2
 Author: Hengxin Pan <pan.h@wehi.edu.au>
 Maintainer: Hengxin Pan <pan.h@wehi.edu.au>
 Description: Provides tools for drug response data analysis with a focus on 

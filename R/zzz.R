@@ -23,7 +23,6 @@
                             "\n  From Bioconductor: ", paste(missing_bioc, collapse = ", "),
                             ". Install using: BiocManager::install(c('",
                             paste(missing_bioc, collapse = "', '"), "'))")
-    )
     }
     
     warning(warning_msg)
