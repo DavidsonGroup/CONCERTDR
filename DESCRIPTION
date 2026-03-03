@@ -1,15 +1,16 @@
 Package: CONCERTDR
 Type: Package
 Title: Drug Response Data Analysis Using CMap Database
-Version: 0.4.0
+Version: 0.3.0
 Author: Hengxin Pan <pan.h@wehi.edu.au>
 Maintainer: Hengxin Pan <pan.h@wehi.edu.au>
-Description: Provides a complete pipeline for drug repurposing analysis using
-    the Connectivity Map (CMap) L1000 database. Functionality includes database
-    subsetting, reference profile extraction from GCTX files, signature matching
-    via Kolmogorov-Smirnov, GSEA-based, cosine similarity, and other methods,
-    result annotation against CMap compound metadata, z-score matrix extraction,
-    and publication-quality clustermap visualization via ComplexHeatmap.
+Description: Provides tools for drug response data analysis with a focus on 
+    the Connectivity Map (CMap) database. It enables researchers to extract, 
+    process, and analyze drug response signatures from experimental data and 
+    match them against reference profiles from CMap. The package includes 
+    functions for parameter extraction, combination generation, data processing 
+    from GCTX files, and various signature matching methods including 
+    Kolmogorov-Smirnov, GSEA-based, and others.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
@@ -17,9 +18,10 @@ RoxygenNote: 7.3.2
 Depends:
     R (>= 4.1.0)
 Imports:
+    BiocManager,
     data.table,
-    cmapR,
-    grid,
+    rhdf5,
+    methods,
     stats,
     utils
 Suggests:
@@ -27,16 +29,9 @@ Suggests:
     rmarkdown,
     testthat,
     devtools,
-    BiocStyle,
-    ComplexHeatmap,
-    circlize,
-    BiocManager,
-    ggplot2,
-    RecordLinkage,
-    RCSM,
-    tcltk
+    BiocStyle
 VignetteBuilder: knitr
-biocViews:
+biocViews: 
     GeneExpression,
     Pharmacogenomics,
     Software,

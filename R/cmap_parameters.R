@@ -148,7 +148,7 @@ process_combinations <- function(combinations, output_dir = "output",
                                  install_packages = FALSE,
                                  verbose = TRUE) {
   # Check required packages
-  required_packages <- c("BiocManager", "data.table", "cmapR")
+  required_packages <- c("BiocManager", "data.table", "rhdf5")
   missing_packages <- setdiff(required_packages, utils::installed.packages()[,"Package"])
 
   if (length(missing_packages) > 0) {
@@ -157,7 +157,7 @@ process_combinations <- function(combinations, output_dir = "output",
     }
 
     cran_missing <- intersect(missing_packages, c("BiocManager", "data.table"))
-    bioc_missing <- intersect(missing_packages, c("cmapR"))
+    bioc_missing <- intersect(missing_packages, c("rhdf5"))
 
     install_msg <- character()
     if (length(cran_missing) > 0) {
@@ -166,7 +166,8 @@ process_combinations <- function(combinations, output_dir = "output",
     }
     if (length(bioc_missing) > 0) {
       install_msg <- c(install_msg,
-                       paste0("BiocManager::install(c('", paste(bioc_missing, collapse = "', '"), "'))"))
+                       paste0("BiocManager::install(c('", paste(bioc_missing, collapse = "', '"), "'))")
+      )
     }
 
     stop(

@@ -210,8 +210,7 @@ extract_signature_zscores <- function(results_df,
   }
   
   # read z-scores from GCTX
-  gct   <- cmapR::parse_gctx(fname = gctx_file, rid = as.character(ordered_ids), cid = sig_ids)
-  z_mat <- cmapR::mat(gct)
+  z_mat <- fast_parse_gctx(fname = gctx_file, rid = as.character(ordered_ids), cid = sig_ids)
   z_mat <- z_mat[as.character(ordered_ids), sig_ids, drop = FALSE]
   rownames(z_mat) <- ordered_genes
   z_plot          <- t(z_mat)          # rows = perturbations, cols = genes

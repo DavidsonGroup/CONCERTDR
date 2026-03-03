@@ -65,15 +65,12 @@ process_combination <- function(combination, rid, genenames, sig_info,
   output_file <- file.path(output_dir, filename)
   
   if (length(cid) > 0) {
-    # Parse the gctx file using CmapR
-    pert_data <- cmapR::parse_gctx(
+    # Parse the gctx file
+    mat <- fast_parse_gctx(
       fname = gctx_file,
       cid = cid,
       rid = rid
     )
-    
-    # Get the data matrix
-    mat <- cmapR::mat(pert_data)
     
     message(sprintf("Data dimensions: %d x %d", nrow(mat), ncol(mat)))
     
