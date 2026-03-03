@@ -59,11 +59,18 @@ fast_parse_gctx <- function(fname, rid = NULL, cid = NULL) {
   all_rid <- trimws(as.character(rhdf5::h5read(fname, "0/META/ROW/id")))
   all_cid <- trimws(as.character(rhdf5::h5read(fname, "0/META/COL/id")))
 
+  message(sprintf("[fast_parse_gctx] GCTX has %d rows, %d cols",
+                  length(all_rid), length(all_cid)))
+  message(sprintf("[fast_parse_gctx] GCTX col IDs (first 3): %s",
+                  paste(utils::head(all_cid, 3), collapse = " | ")))
+
   # Column indices (fast axis – pushed into HDF5)
   if (is.null(cid)) {
     cidx <- seq_along(all_cid)
   } else {
     cid <- trimws(as.character(cid))
+    message(sprintf("[fast_parse_gctx] Requested col IDs (first 3): %s",
+                    paste(utils::head(cid, 3), collapse = " | ")))
     matched_c <- match(cid, all_cid)
     n_found_c <- sum(!is.na(matched_c))
     n_miss_c  <- sum( is.na(matched_c))
