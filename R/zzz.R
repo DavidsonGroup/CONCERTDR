@@ -1,12 +1,12 @@
 .onLoad <- function(libname, pkgname) {
   # Check if necessary packages are available
-  required_packages <- c("BiocManager", "data.table", "cmapR")
+  required_packages <- c("BiocManager", "data.table", "rhdf5")
   missing_packages <- required_packages[
     !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
   ]
   
   if (length(missing_packages) > 0) {
-    missing_bioc <- intersect(missing_packages, c("cmapR"))
+    missing_bioc <- intersect(missing_packages, c("rhdf5"))
     missing_cran <- setdiff(missing_packages, missing_bioc)
     
     warning_msg <- "CONCERTDR depends on the following packages that are not installed: "

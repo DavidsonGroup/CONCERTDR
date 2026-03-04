@@ -124,15 +124,12 @@ extract_cmap_data_from_config <- function(config_file,
     cid <- filtered_df$sig_id
     
     if (length(cid) > 0) {
-      # Parse the gctx file using CmapR
-      pert_data <- cmapR::parse_gctx(
+      # Parse the gctx file
+      mat <- fast_parse_gctx(
         fname = gctx_file,
         cid = cid,
         rid = rid
       )
-      
-      # Get the data matrix
-      mat <- cmapR::mat(pert_data)
       
       if (verbose) message(sprintf("Data dimensions: %d x %d", nrow(mat), ncol(mat)))
       
@@ -466,8 +463,8 @@ extract_cmap_data_from_siginfo <- function(siginfo_file = "siginfo_beta.txt",
   # Parse the gctx file using all signature IDs
   if (verbose) message("\nExtracting data from GCTX file...")
   
-  tryCatch({
-    pert_data <- cmapR::parse_gctx(
+  mat <- tryCatch({
+    fast_parse_gctx(
       fname = gctx_file,
       cid = all_cids,
       rid = rid
@@ -475,9 +472,6 @@ extract_cmap_data_from_siginfo <- function(siginfo_file = "siginfo_beta.txt",
   }, error = function(e) {
     stop("Error reading GCTX file: ", e$message)
   })
-  
-  # Get the data matrix
-  mat <- cmapR::mat(pert_data)
   
   if (verbose) message(sprintf("Data dimensions: %d genes x %d signatures", nrow(mat), ncol(mat)))
   
