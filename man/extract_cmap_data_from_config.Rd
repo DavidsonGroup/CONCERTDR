@@ -26,6 +26,8 @@ extract_cmap_data_from_config(
 \item{keep_all_genes}{Logical; whether to keep all genes across combinations (TRUE) or only common genes (FALSE) (default: TRUE)}
 
 \item{verbose}{Logical; whether to print progress messages (default: TRUE)}
+
+\item{landmark}{Logical; whether to restrict to landmark genes only (default: TRUE)}
 }
 \value{
 A data frame with combined results from all combinations, with annotation
@@ -36,7 +38,7 @@ Extract expression data from CMap GCTX files based on parameters
 specified in a configuration file, returning a combined data frame.
 }
 \examples{
-\dontrun{
+\donttest{
 # First create and edit a configuration file
 create_cmap_config_template()
 # Edit the conf/cmap_options_template.conf file

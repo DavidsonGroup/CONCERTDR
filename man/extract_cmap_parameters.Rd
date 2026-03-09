@@ -35,7 +35,7 @@ experimental parameters (time points, dosages, cell lines) and saves them to
 a configuration file for use in the DR pipeline.
 }
 \examples{
-\dontrun{
+\donttest{
 # Extract parameters and write config
 params <- extract_cmap_parameters("databases/siginfo_beta.txt")
 }

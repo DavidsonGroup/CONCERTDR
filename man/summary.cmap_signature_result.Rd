@@ -19,3 +19,27 @@ A data frame with the top compounds
 \description{
 Summary method for cmap_signature_result objects
 }
+\examples{
+mock_res <- structure(
+  list(
+    results = list(
+      ks = data.frame(compound = c("imatinib", "dasatinib"),
+                      Score = c(-0.72, -0.45), pValue = c(0.002, 0.041),
+                      pAdjValue = c(0.020, 0.205), stringsAsFactors = FALSE)
+    ),
+    summary = data.frame(compound = c("imatinib", "dasatinib"),
+                         method = c("ks", "ks"),
+                         Score = c(-0.72, -0.45), pValue = c(0.002, 0.041),
+                         global_rank = 1:2, stringsAsFactors = FALSE),
+    gene_data    = data.frame(Gene = c("TP53", "MYC"),
+                              log2FC = c(1.5, -2.1), stringsAsFactors = FALSE),
+    settings     = list(signature_file = "ex.txt",
+                        time_completed = Sys.time(), time_taken_mins = 0.1,
+                        methods = "ks", permutations = 10),
+    common_genes = list(up   = list(found = "TP53", count = 1L, percent = 50),
+                        down = list(found = "MYC",  count = 1L, percent = 50))
+  ), class = "cmap_signature_result"
+)
+summary(mock_res, top_n = 2)
+
+}

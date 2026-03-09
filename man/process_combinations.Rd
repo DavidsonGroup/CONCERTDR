@@ -36,7 +36,7 @@ Invisibly returns vector of output files
 Process combinations by extracting data for each
 }
 \examples{
-\dontrun{
+\donttest{
 # First create a configuration file
 extract_cmap_parameters("databases/siginfo_beta.txt")
 # Edit the configuration file as needed

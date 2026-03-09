@@ -10,6 +10,14 @@
 #' @param gctx_file Path to GCTX file (if available)
 #' @param geneinfo_file Path to geneinfo file (if available)
 #' @param siginfo_file Path to siginfo file (if available)
+#'
+#' @examples
+#' is.function(demonstrate_workflow)
+#'
+#' \donttest{
+#' demonstrate_workflow(demo_dir = tempdir(), use_minimal = TRUE)
+#' }
+#'
 #' @export
 demonstrate_workflow <- function(demo_dir = "CONCERTDR_demo",
                                  use_minimal = TRUE,
@@ -112,7 +120,6 @@ demonstrate_workflow <- function(demo_dir = "CONCERTDR_demo",
 
     genes <- unique(sig_df$Gene)
     n_samples <- if (use_minimal) 30 else 100
-    set.seed(42)
     synth_mat <- matrix(stats::rnorm(length(genes) * n_samples),
                         nrow = length(genes), ncol = n_samples)
     colnames(synth_mat) <- paste0("SYNTH_", seq_len(n_samples))

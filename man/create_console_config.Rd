@@ -32,7 +32,7 @@ select CMap experimental parameters (time points, dosages, cell lines).
 This is a fallback option when the GUI version is not available.
 }
 \examples{
-\dontrun{
+\donttest{
 # Create interactive console configuration
 selections <- create_console_config("databases/siginfo_beta.txt")
 

@@ -31,7 +31,7 @@ Performs fuzzy string matching to find the best matches between query drug names
 and a reference list of drug names. Uses Levenshtein distance for similarity calculation.
 }
 \examples{
-\dontrun{
+\donttest{
 query <- c("aspirin", "ibuprofen", "acetaminophen")
 reference <- c("aspirin", "ibuprofen", "acetaminophen", "naproxen", "diclofenac")
 

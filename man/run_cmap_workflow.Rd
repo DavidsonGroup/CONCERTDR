@@ -51,3 +51,22 @@ List containing results from all methods
 \description{
 Complete workflow from configuration to signature matching
 }
+\examples{
+\donttest{
+# Requires the full CMap files downloaded from clue.io
+sig_file <- system.file("extdata", "example_signature.txt",
+                        package = "CONCERTDR")
+cfg_file <- create_cmap_config_template(dest_dir = tempdir(), overwrite = TRUE)
+results  <- run_cmap_workflow(
+  config_file    = cfg_file,
+  signature_file = sig_file,
+  geneinfo_file  = "path/to/geneinfo_beta.txt",
+  siginfo_file   = "path/to/siginfo_beta.txt",
+  gctx_file      = "path/to/level5_beta_trt_cp_n720216x12328.gctx",
+  output_dir     = tempdir(),
+  methods        = c("ks", "xsum"),
+  permutations   = 100
+)
+}
+
+}

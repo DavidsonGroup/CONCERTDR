@@ -14,7 +14,20 @@
 #' @return A list with extracted parameters (times, doses, cells) and the config file path
 #'
 #' @examples
-#' \dontrun{
+#' ex_sig <- data.frame(
+#'   pert_itime = c("6 h", "24 h", "24 h"),
+#'   pert_idose = c("1 uM", "1 uM", "10 uM"),
+#'   cell_iname = c("A375", "A375", "MCF7"),
+#'   pert_type = c("trt_cp", "trt_cp", "trt_cp"),
+#'   is_hiq = c(1, 1, 1),
+#'   stringsAsFactors = FALSE
+#' )
+#' ex_sig_file <- tempfile(fileext = ".txt")
+#' write.table(ex_sig, ex_sig_file, sep = "\t", row.names = FALSE, quote = FALSE)
+#' params <- extract_cmap_parameters(ex_sig_file, write_config = FALSE, verbose = FALSE)
+#' names(params)
+#'
+#' \donttest{
 #' # Extract parameters and write config
 #' params <- extract_cmap_parameters("databases/siginfo_beta.txt")
 #' }
@@ -126,7 +139,9 @@ extract_cmap_parameters <- function(siginfo_file, write_config = TRUE,
 #' @return Invisibly returns vector of output files
 #'
 #' @examples
-#' \dontrun{
+#' is.function(process_combinations)
+#'
+#' \donttest{
 #' # First create a configuration file
 #' extract_cmap_parameters("databases/siginfo_beta.txt")
 #' # Edit the configuration file as needed
@@ -184,41 +199,33 @@ process_combinations <- function(combinations, output_dir = "output",
 
   # Read gene info file and get rid & gene names
   if (verbose) message("Reading gene info file: ", geneinfo_file)
-  tryCatch({
-    if (requireNamespace("data.table", quietly = TRUE)) {
-      geneinfo_df <- data.table::fread(geneinfo_file, header = TRUE)
-    } else {
-      geneinfo_df <- utils::read.table(geneinfo_file, sep = "\t", header = TRUE)
-    }
-    result <- get_rid(geneinfo_df)
-    rid <- result$rid
-    genenames <- result$genenames
+  if (requireNamespace("data.table", quietly = TRUE)) {
+    geneinfo_df <- data.table::fread(geneinfo_file, header = TRUE)
+  } else {
+    geneinfo_df <- utils::read.table(geneinfo_file, sep = "\t", header = TRUE)
+  }
+  result <- get_rid(geneinfo_df)
+  rid <- result$rid
+  genenames <- result$genenames
 
-    if (verbose) message("Found ", length(rid), " landmark genes")
-  }, error = function(e) {
-    stop("Error reading gene info file: ", e$message)
-  })
+  if (verbose) message("Found ", length(rid), " landmark genes")
 
   # Read siginfo file
   if (verbose) message("Reading signature info file: ", siginfo_file)
-  tryCatch({
-    if (requireNamespace("data.table", quietly = TRUE)) {
-      sig_info <- data.table::fread(siginfo_file, header = TRUE, stringsAsFactors = FALSE)
-    } else {
-      sig_info <- utils::read.table(siginfo_file, sep = "\t", header = TRUE, stringsAsFactors = FALSE)
-    }
-    #sig_info <- sig_info[sig_info$pert_type == "trt_cp", ]
-    sig_info <- sig_info[sig_info$is_hiq == 1, ]
+  if (requireNamespace("data.table", quietly = TRUE)) {
+    sig_info <- data.table::fread(siginfo_file, header = TRUE, stringsAsFactors = FALSE)
+  } else {
+    sig_info <- utils::read.table(siginfo_file, sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+  }
+  #sig_info <- sig_info[sig_info$pert_type == "trt_cp", ]
+  sig_info <- sig_info[sig_info$is_hiq == 1, ]
 
-    if (verbose) message("Found ", nrow(sig_info), " high-quality treatment signatures")
-  }, error = function(e) {
-    stop("Error reading signature info file: ", e$message)
-  })
+  if (verbose) message("Found ", nrow(sig_info), " high-quality treatment signatures")
 
   # Process each combination
   output_files <- character(nrow(combinations))
 
-  for (i in 1:nrow(combinations)) {
+  for (i in seq_len(nrow(combinations))) {
     if (verbose) {
       message(sprintf("\nProcessing combination %d of %d:", i, nrow(combinations)))
     }

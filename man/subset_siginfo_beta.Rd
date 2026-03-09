@@ -35,7 +35,7 @@ in subsequent parameters based on your current selection, helping you make
 informed decisions about the filtering sequence.
 }
 \examples{
-\dontrun{
+\donttest{
 # Interactive mode with smart preview of downstream options
 filtered_siginfo <- subset_siginfo_beta("path/to/siginfo_beta.txt")
 

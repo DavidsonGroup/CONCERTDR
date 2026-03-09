@@ -33,6 +33,23 @@
 #'     \item{\code{sig_ids}}{Character vector of selected \code{sig_id}s.}
 #'     \item{\code{sig_labels}}{Character vector of human-readable labels.}
 #'   }
+#'
+#' @examples
+#' is.function(extract_signature_zscores)
+#'
+#' \donttest{
+#' # Requires the full CMap GCTX file (downloaded from clue.io)
+#' sig_file <- system.file("extdata", "example_signature.txt",
+#'                         package = "CONCERTDR")
+#' zmat <- extract_signature_zscores(
+#'   results_df     = data.frame(sig_id = "DEMO001", Score = -0.72),
+#'   signature_file = sig_file,
+#'   gctx_file      = "path/to/level5_beta_trt_cp_n720216x12328.gctx",
+#'   geneinfo_file  = "path/to/geneinfo_beta.txt",
+#'   siginfo_file   = "path/to/siginfo_beta.txt"
+#' )
+#' }
+#'
 #' @export
 extract_signature_zscores <- function(results_df,
                                       signature_file,
@@ -136,7 +153,7 @@ extract_signature_zscores <- function(results_df,
   sig[[gene_col]]   <- toupper(as.character(sig[[gene_col]]))
   sig[[log2fc_col]] <- suppressWarnings(as.numeric(sig[[log2fc_col]]))
   sig <- sig[!is.na(sig[[gene_col]]) & nzchar(sig[[gene_col]]) & !is.na(sig[[log2fc_col]]), , drop = FALSE]
-  if (!is.null(max_genes)) sig <- head(sig, max_genes)
+  if (!is.null(max_genes)) sig <- utils::head(sig, max_genes)
   sig <- sig[sig[[gene_col]] %in% names(gene_map), , drop = FALSE]
   if (nrow(sig) == 0) stop("No signature genes mapped to geneinfo gene_id")
 
@@ -170,7 +187,7 @@ extract_signature_zscores <- function(results_df,
   }
 
   tech    <- tech[order(tech[[score_col]], decreasing = FALSE), , drop = FALSE]
-  tech    <- head(tech, max_perts)
+  tech    <- utils::head(tech, max_perts)
   sig_ids <- as.character(tech[[pert_id_col]])
   sig_ids <- sig_ids[!is.na(sig_ids) & nzchar(sig_ids)]
   sig_ids <- unique(sig_ids)
@@ -299,6 +316,23 @@ extract_signature_zscores <- function(results_df,
 #'
 #' @return Invisibly returns a list containing the plotted matrix,
 #' selected perturbation ids, and file paths.
+#'
+#' @examples
+#' is.function(plot_signature_direction_tile_barcode)
+#'
+#' \donttest{
+#' # Requires the full CMap GCTX file (downloaded from clue.io)
+#' sig_file <- system.file("extdata", "example_signature.txt",
+#'                         package = "CONCERTDR")
+#' plot_signature_direction_tile_barcode(
+#'   results_df    = data.frame(sig_id = "DEMO001", Score = -0.72),
+#'   signature_file = sig_file,
+#'   gctx_file     = "path/to/level5_beta_trt_cp_n720216x12328.gctx",
+#'   geneinfo_file = "path/to/geneinfo_beta.txt",
+#'   siginfo_file  = "path/to/siginfo_beta.txt"
+#' )
+#' }
+#'
 #' @export
 plot_signature_direction_tile_barcode <- function(results_df = NULL,
                                                   signature_file = NULL,

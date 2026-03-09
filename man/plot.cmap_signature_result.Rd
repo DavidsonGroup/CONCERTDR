@@ -23,3 +23,31 @@ A ggplot object
 \description{
 Plot method for cmap_signature_result objects
 }
+\examples{
+\donttest{
+# Requires the ggplot2 package
+mock_res <- structure(
+  list(
+    results = list(
+      ks = data.frame(compound = c("imatinib", "dasatinib", "doxorubicin"),
+                      Score = c(-0.72, -0.45, 0.31),
+                      pValue = c(0.002, 0.041, 0.280),
+                      pAdjValue = c(0.020, 0.205, 0.560),
+                      stringsAsFactors = FALSE)
+    ),
+    summary = data.frame(compound = "imatinib", method = "ks",
+                         Score = -0.72, pValue = 0.002, global_rank = 1L,
+                         stringsAsFactors = FALSE),
+    gene_data    = data.frame(Gene = c("TP53", "MYC"),
+                              log2FC = c(1.5, -2.1), stringsAsFactors = FALSE),
+    settings     = list(signature_file = "ex.txt",
+                        time_completed = Sys.time(), time_taken_mins = 0.1,
+                        methods = "ks", permutations = 10),
+    common_genes = list(up   = list(found = "TP53", count = 1L, percent = 50),
+                        down = list(found = "MYC",  count = 1L, percent = 50))
+  ), class = "cmap_signature_result"
+)
+plot(mock_res, method = "ks", plot_type = "scores")
+}
+
+}

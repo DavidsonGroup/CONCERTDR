@@ -9,12 +9,16 @@
 #' @param gctx_file Path to the GCTX file
 #' @param keep_all_genes Logical; whether to keep all genes across combinations (TRUE) or only common genes (FALSE) (default: TRUE)
 #' @param verbose Logical; whether to print progress messages (default: TRUE)
+#' @param landmark Logical; whether to restrict to landmark genes only (default: TRUE)
 #'
 #' @return A data frame with combined results from all combinations, with annotation
 #'         columns indicating time, dose, and cell line for each column
 #'
 #' @examples
-#' \dontrun{
+#' cfg <- create_cmap_config_template(dest_dir = tempdir(), overwrite = TRUE)
+#' file.exists(cfg)
+#'
+#' \donttest{
 #' # First create and edit a configuration file
 #' create_cmap_config_template()
 #' # Edit the conf/cmap_options_template.conf file
@@ -102,7 +106,7 @@ extract_cmap_data_from_config <- function(config_file,
   result_list <- list()
 
   # Process each combination
-  for (i in 1:nrow(combinations)) {
+  for (i in seq_len(nrow(combinations))) {
     combination <- combinations[i, ]
     itime <- combination$itime
     idose <- combination$idose
@@ -188,9 +192,9 @@ extract_cmap_data_from_config <- function(config_file,
     if (verbose) message("Total unique genes across all combinations: ", length(all_genes))
 
     # Create the combined matrix with all genes and all samples
-    total_samples <- sum(sapply(result_list, function(r) {
-      if (!is.null(r$data)) ncol(r$data) else 0
-    }))
+    total_samples <- sum(vapply(result_list, function(r) {
+      if (!is.null(r$data)) ncol(r$data) else 0L
+    }, integer(1)))
 
     # Initialize combined data with NAs
     combined_matrix <- matrix(NA, nrow = length(all_genes), ncol = total_samples)
@@ -265,7 +269,7 @@ extract_cmap_data_from_config <- function(config_file,
 
   # Create result metadata
   if (verbose) {
-    message(sprintf("Final combined data dimensions: %d genes × %d samples",
+    message(sprintf("Final combined data dimensions: %d genes x %d samples",
                     nrow(combined_data), ncol(combined_data)))
   }
 
@@ -291,12 +295,15 @@ extract_cmap_data_from_config <- function(config_file,
 #' @param filter_quality Logical; whether to filter for pert_type="trt_cp" and is_hiq=1 (default: TRUE)
 #' @param keep_all_genes Logical; whether to keep all genes (TRUE) or only common genes (FALSE) (default: TRUE)
 #' @param verbose Logical; whether to print progress messages (default: TRUE)
+#' @param landmark Logical; whether to restrict to landmark genes only (default: TRUE)
 #'
 #' @return A data frame with expression data for all signatures, with annotation
 #'         columns indicating sample metadata. Metadata is stored as an attribute.
 #'
 #' @examples
-#' \dontrun{
+#' is.function(extract_cmap_data_from_siginfo)
+#'
+#' \donttest{
 #' # Example 1: Use the original siginfo_beta.txt directly
 #' reference_df <- extract_cmap_data_from_siginfo(
 #'   siginfo_file = "path/to/siginfo_beta.txt",
@@ -430,7 +437,7 @@ extract_cmap_data_from_siginfo <- function(siginfo_file = "siginfo_beta.txt",
 
   # Limit number of signatures if requested
   if (!is.null(max_signatures) && nrow(sig_info) > max_signatures) {
-    sig_info <- sig_info[1:max_signatures, ]
+    sig_info <- sig_info[seq_len(max_signatures), ]
     if (verbose) message("Limited to first ", max_signatures, " signatures")
   }
 
@@ -451,12 +458,12 @@ extract_cmap_data_from_siginfo <- function(siginfo_file = "siginfo_beta.txt",
     }
     if ("pert_idose" %in% names(sig_info)) {
       dose_table <- table(sig_info$pert_idose)
-      message("Doses: ", paste(names(dose_table)[1:min(5, length(dose_table))], collapse = ", "),
+      message("Doses: ", paste(names(dose_table)[seq_len(min(5, length(dose_table)))], collapse = ", "),
               if(length(dose_table) > 5) "..." else "")
     }
     if ("cell_iname" %in% names(sig_info)) {
       cell_table <- table(sig_info$cell_iname)
-      message("Cell lines: ", paste(names(cell_table)[1:min(10, length(cell_table))], collapse = ", "),
+      message("Cell lines: ", paste(names(cell_table)[seq_len(min(10, length(cell_table)))], collapse = ", "),
               if(length(cell_table) > 10) "..." else "")
     }
   }
@@ -477,7 +484,7 @@ extract_cmap_data_from_siginfo <- function(siginfo_file = "siginfo_beta.txt",
   # Get the data matrix
   mat <- cmapR::mat(pert_data)
 
-  if (verbose) message(sprintf("Data dimensions: %d genes × %d signatures", nrow(mat), ncol(mat)))
+  if (verbose) message(sprintf("Data dimensions: %d genes x %d signatures", nrow(mat), ncol(mat)))
 
   # Convert to data frame and set row names as gene names
   expression_data <- as.data.frame(mat)

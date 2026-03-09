@@ -12,8 +12,7 @@ vignette: >
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>",
-  eval = FALSE
+  comment = "#>"
 )
 ```
 
@@ -21,102 +20,84 @@ knitr::opts_chunk$set(
 
 ## Overview
 
-CONCERTDR is an R package that provides a comprehensive suite of tools for drug response data analysis, with a particular focus on working with the Connectivity Map (CMap) database. It enables researchers to efficiently extract, process, and match drug response signatures from their experimental data with reference profiles from CMap.
+CONCERTDR provides a complete pipeline for drug repurposing analysis using
+the Connectivity Map (CMap) L1000 database. The main steps are:
+
+1. **CMap data extraction** - subset the GCTX file by time, dose, and cell
+   line to obtain a reference expression matrix.
+2. **Signature matching** - score an input differential-expression signature
+   against the reference matrix using KS, GSEA, XCos, XSum, and Zhang methods.
+3. **Result annotation** - integrate scores with compound metadata
+   (MoA, targets, clinical phase) from CMap compound info files.
+4. **Visualisation** - directional barcode heatmaps via ComplexHeatmap.
 
 ## Installation
 
-To install the latest version of CONCERTDR from Bioconductor:
-
 ```{r installation, eval=FALSE}
-if (!requireNamespace("BiocManager", quietly=TRUE))
+if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 BiocManager::install("CONCERTDR")
 ```
 
-For the development version:
+RCSM (required for signature matching) must be installed from GitHub:
 
-```{r installation-dev, eval=FALSE}
-# Install devtools if not already installed
-# install.packages("devtools")
-devtools::install_github("zeratulhx/DR_pipeline")
+```{r install-rcsm, eval=FALSE}
+if (!requireNamespace("remotes", quietly = TRUE))
+    install.packages("remotes")
+remotes::install_github("Jasonlinchina/RCSM")
 ```
-
-## Dependencies
-
-CONCERTDR depends on the following packages:
-
-- **BiocManager**: For installing Bioconductor packages
-- **cmapR**: For working with CMap GCTX files
-- **data.table**: For efficient data manipulation
-- **RCSM**: For signature matching methods (installed automatically from GitHub)
-
-## Package Structure
-
-The CONCERTDR package is organized into several main components:
-
-1. **CMap Parameter Management and Data Extraction**
-   - Functions for extracting experimental parameters and creating configurations
-   - Tools for generating combinations of time points, doses, and cell lines
-   - GCTX file data extraction functions
-
-2. **Signature Matching**
-   - Multiple methods for matching drug response signatures
-   - Statistical analysis of matching results
-   - Result visualization and interpretation
-
-3. **Utilities**
-   - Configuration file management
-   - Interactive selection of parameters
-   - Batch processing with SLURM support
-
-## Getting Started
-
-See the other vignettes for detailed workflows:
-
-- [CMap Workflow](cmap_workflow.html): Step-by-step guide to extracting and processing CMap data
-- [Signature Matching](signature_matching.html): How to match drug response signatures
 
 ## Acquiring CMap Data
 
-The Connectivity Map (CMap) dataset can be downloaded from the [Broad Institute's CMap website](https://clue.io/). You'll need to register for an account to access the data.
+Download the following files from [clue.io](https://clue.io/) after free
+registration:
 
-Required files include:
-- `siginfo_beta.txt`: Contains information about all signatures in the database
-- `geneinfo_beta.txt`: Contains information about all genes in the database
-- `level5_beta_trt_cp_n720216x12328.gctx`: Contains the expression data for all signatures
+| File | Description |
+|------|-------------|
+| `siginfo_beta.txt` | Metadata for all ~720k signatures |
+| `geneinfo_beta.txt` | Gene annotations (978 landmark genes) |
+| `level5_beta_trt_cp_n720216x12328.gctx` | Expression matrix (~14 GB) |
+| `compoundinfo_beta.txt` | Drug metadata (MoA, targets, phase) |
 
-## Example Workflow
+## Quick-start with Bundled Example Data
 
-Here's a brief overview of a typical workflow:
+The package ships with small example datasets so every function can be
+explored without downloading the full CMap files.
 
-```{r example, eval=FALSE}
+```{r setup}
 library(CONCERTDR)
 
-# Create a configuration template
-create_cmap_config_template()
+# Locate bundled example files
+sig_file <- system.file("extdata", "example_signature.txt",    package = "CONCERTDR")
+ref_file <- system.file("extdata", "example_reference_df.csv", package = "CONCERTDR")
 
-# Edit the configuration file manually...
-# Then generate combinations
-combinations <- generate_combinations_from_config("conf/cmap_options_template.conf")
+# Read the example reference data frame
+# In a real analysis this is produced by extract_cmap_data_from_config()
+ref_df <- read.csv(ref_file, row.names = 1, check.names = FALSE)
+cat("Reference matrix:", nrow(ref_df), "genes x", ncol(ref_df), "signatures\n")
 
-# Process combinations to extract data
-process_combinations(combinations,
-                    output_dir = "output",
-                    geneinfo_file = "path/to/geneinfo_beta.txt",
-                    siginfo_file = "path/to/siginfo_beta.txt",
-                    gctx_file = "path/to/level5_beta_trt_cp_n720216x12328.gctx")
-
-# Match a signature against the reference profiles
-process_signature_with_df(
-  signature_file = "path/to/signature.txt", 
-  reference_df = reference_data,
-  output_dir = "results",
-  methods = c("ks", "xcos") # Example using just two methods
-)
+# Preview the query signature (Gene + log2FC columns)
+sig <- read.delim(sig_file)
+head(sig)
 ```
+
+## Package Modules
+
+| Module | Key functions |
+|--------|---------------|
+| Data extraction | `extract_cmap_parameters()`, `generate_combinations_from_config()`, `extract_cmap_data_from_config()`, `extract_cmap_data_from_siginfo()` |
+| Siginfo filtering | `subset_siginfo_beta()` |
+| Signature matching | `process_signature_with_df()`, `run_cmap_workflow()` |
+| Result annotation | `annotate_drug_results()`, `fuzzy_drug_match()` |
+| Visualisation | `extract_signature_zscores()`, `plot_signature_direction_tile_barcode()` |
+
+See the companion vignettes for detailed walkthroughs:
+
+- **CMap Workflow** - extracting reference data from the GCTX file
+- **Signature Matching** - matching and annotating results end-to-end
 
 ## Session Info
 
-```{r session-info, eval=TRUE}
+```{r session-info}
 sessionInfo()
 ```

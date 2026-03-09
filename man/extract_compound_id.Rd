@@ -29,7 +29,7 @@ in signature matching results. This function can be customized based on the
 specific format of compound identifiers in your data.
 }
 \examples{
-\dontrun{
+\donttest{
 # Example compound strings
 compounds <- c("CVD001_HEPG2_6H:BRD-K03652504-001-01-9:10.0497",
                "CVD001_HEPG2_6H:BRD-A37828317-001-03-0:10")

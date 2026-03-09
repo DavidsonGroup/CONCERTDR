@@ -32,18 +32,51 @@
 #'   \item{output_files}{Named character vector of written files (if any)}
 #'
 #' @examples
-#' \dontrun{
-#' results <- read.csv("sig_match_xsum_results.csv")
-#'
-#' views <- annotate_drug_results(
-#'   results_df = results,
-#'   sig_info_file = "siginfo_beta.txt",
-#'   comp_info_file = "compoundinfo_beta.txt",
-#'   output_dir = "results",
-#'   write_outputs = TRUE
+#' ex_results <- data.frame(
+#'   compound = "CVD001_HEPG2_6H:BRD-K03652504-001-01-9:10.0497",
+#'   Score = -0.72,
+#'   pValue = 0.002,
+#'   pAdjValue = 0.02,
+#'   stringsAsFactors = FALSE
 #' )
+#' ex_siginfo <- data.frame(
+#'   sig_id = ex_results$compound,
+#'   pert_type = "trt_cp",
+#'   pert_id = "BRD-K03652504-001-01-9",
+#'   pert_iname = "imatinib",
+#'   stringsAsFactors = FALSE
+#' )
+#' ex_compinfo <- data.frame(
+#'   pert_id = "BRD-K03652504-001-01-9",
+#'   pert_name = "imatinib",
+#'   cmap_name = "imatinib",
+#'   stringsAsFactors = FALSE
+#' )
+#' views <- annotate_drug_results(
+#'   results_df = ex_results,
+#'   sig_info_file = ex_siginfo,
+#'   comp_info_file = ex_compinfo,
+#'   write_outputs = FALSE,
+#'   verbose = FALSE
+#' )
+#' names(views)
 #'
-#' head(views$wetlab_drug_view)
+#' \donttest{
+#' if (file.exists("sig_match_xsum_results.csv") &&
+#'     file.exists("siginfo_beta.txt") &&
+#'     file.exists("compoundinfo_beta.txt")) {
+#'   results <- read.csv("sig_match_xsum_results.csv")
+#'
+#'   views <- annotate_drug_results(
+#'     results_df = results,
+#'     sig_info_file = "siginfo_beta.txt",
+#'     comp_info_file = "compoundinfo_beta.txt",
+#'     output_dir = "results",
+#'     write_outputs = TRUE
+#'   )
+#'
+#'   head(views$wetlab_drug_view)
+#' }
 #' }
 #'
 #' @export
@@ -436,7 +469,9 @@ annotate_drug_results <- function(results_df,
 #' @return Vector of extracted compound identifiers
 #'
 #' @examples
-#' \dontrun{
+#' extract_compound_id("A:BRD-K03652504-001-01-9:10")
+#'
+#' \donttest{
 #' # Example compound strings
 #' compounds <- c("CVD001_HEPG2_6H:BRD-K03652504-001-01-9:10.0497",
 #'                "CVD001_HEPG2_6H:BRD-A37828317-001-03-0:10")
@@ -456,21 +491,13 @@ extract_compound_id <- function(compound_strings,
                                 part_index = 2) {
 
   if (method == "split_colon") {
-    return(sapply(strsplit(compound_strings, ":"), function(x) {
-      if (length(x) >= part_index) {
-        return(x[part_index])
-      } else {
-        return(x[1])
-      }
-    }))
+    return(vapply(strsplit(compound_strings, ":"), function(x) {
+      if (length(x) >= part_index) x[part_index] else x[1]
+    }, character(1)))
   } else if (method == "split_underscore") {
-    return(sapply(strsplit(compound_strings, "_"), function(x) {
-      if (length(x) >= part_index) {
-        return(x[part_index])
-      } else {
-        return(x[1])
-      }
-    }))
+    return(vapply(strsplit(compound_strings, "_"), function(x) {
+      if (length(x) >= part_index) x[part_index] else x[1]
+    }, character(1)))
   } else if (method == "regex") {
     if (is.null(regex_pattern)) {
       stop("regex_pattern must be provided when method='regex'")
@@ -497,12 +524,17 @@ extract_compound_id <- function(compound_strings,
 #' @return Data frame with query names, matched names, and similarity scores
 #'
 #' @examples
-#' \dontrun{
-#' query <- c("aspirin", "ibuprofen", "acetaminophen")
-#' reference <- c("aspirin", "ibuprofen", "acetaminophen", "naproxen", "diclofenac")
+#' if (requireNamespace("RecordLinkage", quietly = TRUE)) {
+#'   fuzzy_drug_match(c("asprin"), c("aspirin", "ibuprofen"), threshold = 70)
+#' }
 #'
-#' matches <- fuzzy_drug_match(query, reference, threshold = 80)
-#' print(matches)
+#' \donttest{
+#' if (requireNamespace("RecordLinkage", quietly = TRUE)) {
+#'   query <- c("aspirin", "ibuprofen", "acetaminophen")
+#'   reference <- c("aspirin", "ibuprofen", "acetaminophen", "naproxen", "diclofenac")
+#'   matches <- fuzzy_drug_match(query, reference, threshold = 80)
+#'   print(matches)
+#' }
 #' }
 #'
 #' @export
@@ -545,7 +577,7 @@ fuzzy_drug_match <- function(query_names,
     above_threshold <- which(similarities >= threshold)
     if (length(above_threshold) > 0) {
       sorted_indices <- above_threshold[order(similarities[above_threshold], decreasing = TRUE)]
-      top_indices <- head(sorted_indices, top_n)
+      top_indices <- utils::head(sorted_indices, top_n)
 
       for (idx in top_indices) {
         results <- rbind(results, data.frame(

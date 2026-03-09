@@ -45,3 +45,22 @@ A structured list containing:
 \description{
 Process drug response signatures against reference data in a dataframe
 }
+\examples{
+\donttest{
+# Requires: remotes::install_github("Jasonlinchina/RCSM")
+sig_file <- system.file("extdata", "example_signature.txt",
+                        package = "CONCERTDR")
+ref_file <- system.file("extdata", "example_reference_df.csv",
+                        package = "CONCERTDR")
+ref_df   <- read.csv(ref_file, row.names = 1, check.names = FALSE)
+results  <- process_signature_with_df(
+  signature_file = sig_file,
+  reference_df   = ref_df,
+  output_dir     = tempdir(),
+  permutations   = 100,
+  methods        = c("ks", "xsum"),
+  save_files     = FALSE
+)
+}
+
+}

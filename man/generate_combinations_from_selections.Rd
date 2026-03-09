@@ -18,7 +18,7 @@ Data frame of combinations
 Creates a data frame of combinations based on the selections from the interactive config functions
 }
 \examples{
-\dontrun{
+\donttest{
 # GUI version (if available)
 selections <- create_interactive_config("databases/siginfo_beta.txt")
 # OR console version

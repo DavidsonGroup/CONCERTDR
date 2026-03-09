@@ -1,3 +1,6 @@
+# Suppress R CMD check notes for ggplot2 NSE column names
+utils::globalVariables(c("compound", "Score", "pValue"))
+
 #' Process drug response signatures against reference data in a dataframe
 #'
 #' @param signature_file Path to signature gene list with log2FC values
@@ -17,6 +20,25 @@
 #'   \item{settings}{List of parameters used for the analysis}
 #'   \item{common_genes}{Counts of genes found in reference data}
 #'   Use print() or summary() methods to get a quick overview of results
+#'
+#' @examples
+#' sig_file <- system.file("extdata", "example_signature.txt",
+#'                         package = "CONCERTDR")
+#' ref_file <- system.file("extdata", "example_reference_df.csv",
+#'                         package = "CONCERTDR")
+#' ref_df <- read.csv(ref_file, row.names = 1, check.names = FALSE)
+#' ref_df$gene_symbol <- rownames(ref_df)
+#' if (requireNamespace("RCSM", quietly = TRUE)) {
+#'   results <- process_signature_with_df(
+#'     signature_file = sig_file,
+#'     reference_df = ref_df,
+#'     output_dir = tempdir(),
+#'     permutations = 10,
+#'     methods = "ks",
+#'     save_files = FALSE
+#'   )
+#'   summary(results, top_n = 3)
+#' }
 #'
 #' @export
 process_signature_with_df <- function(signature_file, reference_df, output_dir = "results",
@@ -324,6 +346,28 @@ create_summary_from_results <- function(results_list, top_n = 20) {
 #'
 #' @return x invisibly
 #'
+#' @examples
+#' mock_res <- structure(
+#'   list(
+#'     results = list(
+#'       ks = data.frame(compound = c("imatinib", "dasatinib"),
+#'                       Score = c(-0.72, -0.45), pValue = c(0.002, 0.041),
+#'                       pAdjValue = c(0.020, 0.205), stringsAsFactors = FALSE)
+#'     ),
+#'     summary = data.frame(compound = "imatinib", method = "ks",
+#'                          Score = -0.72, pValue = 0.002, global_rank = 1L,
+#'                          stringsAsFactors = FALSE),
+#'     gene_data    = data.frame(Gene = c("TP53", "MYC"),
+#'                               log2FC = c(1.5, -2.1), stringsAsFactors = FALSE),
+#'     settings     = list(signature_file = "ex.txt",
+#'                         time_completed = Sys.time(), time_taken_mins = 0.1,
+#'                         methods = "ks", permutations = 10),
+#'     common_genes = list(up   = list(found = "TP53", count = 1L, percent = 50),
+#'                         down = list(found = "MYC",  count = 1L, percent = 50))
+#'   ), class = "cmap_signature_result"
+#' )
+#' print(mock_res)
+#'
 #' @export
 print.cmap_signature_result <- function(x, ...) {
   cat("CMap Signature Matching Results\n")
@@ -357,10 +401,10 @@ print.cmap_signature_result <- function(x, ...) {
   # Print top compounds from summary (if available)
   if (nrow(x$summary) > 0) {
     top_n <- min(5, nrow(x$summary))
-    top_compounds <- x$summary[order(x$summary$global_rank)[1:top_n], ]
+    top_compounds <- x$summary[order(x$summary$global_rank)[seq_len(top_n)], ]
 
     cat("\nTop compounds across all methods:\n")
-    for (i in 1:nrow(top_compounds)) {
+    for (i in seq_len(nrow(top_compounds))) {
       cat(sprintf("  %d. %s (method: %s, score: %.4f, p-value: %.4f)\n",
                   i, top_compounds$compound[i], top_compounds$method[i],
                   top_compounds$Score[i], top_compounds$pValue[i]))
@@ -386,6 +430,29 @@ print.cmap_signature_result <- function(x, ...) {
 #'
 #' @return A data frame with the top compounds
 #'
+#' @examples
+#' mock_res <- structure(
+#'   list(
+#'     results = list(
+#'       ks = data.frame(compound = c("imatinib", "dasatinib"),
+#'                       Score = c(-0.72, -0.45), pValue = c(0.002, 0.041),
+#'                       pAdjValue = c(0.020, 0.205), stringsAsFactors = FALSE)
+#'     ),
+#'     summary = data.frame(compound = c("imatinib", "dasatinib"),
+#'                          method = c("ks", "ks"),
+#'                          Score = c(-0.72, -0.45), pValue = c(0.002, 0.041),
+#'                          global_rank = 1:2, stringsAsFactors = FALSE),
+#'     gene_data    = data.frame(Gene = c("TP53", "MYC"),
+#'                               log2FC = c(1.5, -2.1), stringsAsFactors = FALSE),
+#'     settings     = list(signature_file = "ex.txt",
+#'                         time_completed = Sys.time(), time_taken_mins = 0.1,
+#'                         methods = "ks", permutations = 10),
+#'     common_genes = list(up   = list(found = "TP53", count = 1L, percent = 50),
+#'                         down = list(found = "MYC",  count = 1L, percent = 50))
+#'   ), class = "cmap_signature_result"
+#' )
+#' summary(mock_res, top_n = 2)
+#'
 #' @export
 summary.cmap_signature_result <- function(object, top_n = 10, ...) {
   if (nrow(object$summary) == 0) {
@@ -397,11 +464,12 @@ summary.cmap_signature_result <- function(object, top_n = 10, ...) {
   top_compounds <- object$summary[order(object$summary$global_rank), ]
 
   # Limit to requested number
-  top_compounds <- head(top_compounds, top_n)
+  top_compounds <- utils::head(top_compounds, top_n)
 
   # Print a summary
-  cat("Top", top_n, "compounds across all methods:\n\n")
-  print(top_compounds[, c("compound", "method", "Score", "pValue", "global_rank")])
+    summary_tbl <- top_compounds[, c("compound", "method", "Score", "pValue", "global_rank")]
+    message("Top ", top_n, " compounds across all methods:\n",
+      paste(capture.output(summary_tbl), collapse = "\n"))
 
   # Return the data invisibly
   invisible(top_compounds)
@@ -416,6 +484,32 @@ summary.cmap_signature_result <- function(object, top_n = 10, ...) {
 #' @param ... Additional arguments passed to plotting functions
 #'
 #' @return A ggplot object
+#'
+#' @examples
+#' mock_res <- structure(
+#'   list(
+#'     results = list(
+#'       ks = data.frame(compound = c("imatinib", "dasatinib", "doxorubicin"),
+#'                       Score = c(-0.72, -0.45, 0.31),
+#'                       pValue = c(0.002, 0.041, 0.280),
+#'                       pAdjValue = c(0.020, 0.205, 0.560),
+#'                       stringsAsFactors = FALSE)
+#'     ),
+#'     summary = data.frame(compound = "imatinib", method = "ks",
+#'                          Score = -0.72, pValue = 0.002, global_rank = 1L,
+#'                          stringsAsFactors = FALSE),
+#'     gene_data    = data.frame(Gene = c("TP53", "MYC"),
+#'                               log2FC = c(1.5, -2.1), stringsAsFactors = FALSE),
+#'     settings     = list(signature_file = "ex.txt",
+#'                         time_completed = Sys.time(), time_taken_mins = 0.1,
+#'                         methods = "ks", permutations = 10),
+#'     common_genes = list(up   = list(found = "TP53", count = 1L, percent = 50),
+#'                         down = list(found = "MYC",  count = 1L, percent = 50))
+#'   ), class = "cmap_signature_result"
+#' )
+#' if (requireNamespace("ggplot2", quietly = TRUE)) {
+#'   plot(mock_res, method = "ks", plot_type = "scores")
+#' }
 #'
 #' @export
 plot.cmap_signature_result <- function(x, method = NULL, plot_type = "scores", top_n = 20, ...) {
@@ -449,9 +543,9 @@ plot.cmap_signature_result <- function(x, method = NULL, plot_type = "scores", t
   # Different plot types
   if (plot_type == "scores") {
     # Bar plot of top scores
-    top_df <- result_df[order(-result_df$Score), ][1:min(top_n, nrow(result_df)), ]
+    top_df <- result_df[order(-result_df$Score), ][seq_len(min(top_n, nrow(result_df))), ]
 
-    p <- ggplot2::ggplot(top_df, ggplot2::aes(x = reorder(compound, Score), y = Score)) +
+    p <- ggplot2::ggplot(top_df, ggplot2::aes(x = stats::reorder(compound, Score), y = Score)) +
       ggplot2::geom_bar(stat = "identity", fill = "steelblue") +
       ggplot2::coord_flip() +
       ggplot2::labs(
@@ -504,6 +598,29 @@ plot.cmap_signature_result <- function(x, method = NULL, plot_type = "scores", t
 #' @param verbose Logical; whether to print progress messages (default: TRUE)
 #'
 #' @return List containing results from all methods
+#'
+#' @examples
+#' # Lightweight runnable setup example:
+#' cfg_file <- create_cmap_config_template(dest_dir = tempdir(), overwrite = TRUE)
+#' file.exists(cfg_file)
+#'
+#' \donttest{
+#' # Requires the full CMap files downloaded from clue.io
+#' sig_file <- system.file("extdata", "example_signature.txt",
+#'                         package = "CONCERTDR")
+#' cfg_file <- create_cmap_config_template(dest_dir = tempdir(), overwrite = TRUE)
+#' results  <- run_cmap_workflow(
+#'   config_file    = cfg_file,
+#'   signature_file = sig_file,
+#'   geneinfo_file  = "path/to/geneinfo_beta.txt",
+#'   siginfo_file   = "path/to/siginfo_beta.txt",
+#'   gctx_file      = "path/to/level5_beta_trt_cp_n720216x12328.gctx",
+#'   output_dir     = tempdir(),
+#'   methods        = c("ks", "xsum"),
+#'   permutations   = 100
+#' )
+#' }
+#'
 #' @export
 run_cmap_workflow <- function(config_file, signature_file,
                               geneinfo_file = "geneinfo_beta.txt",

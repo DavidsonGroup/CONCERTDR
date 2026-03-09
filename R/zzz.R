@@ -1,7 +1,9 @@
 .onLoad <- function(libname, pkgname) {
   # Check if necessary packages are available
   required_packages <- c("BiocManager", "data.table", "cmapR")
-  missing_packages <- setdiff(required_packages, installed.packages()[,"Package"])
+  missing_packages <- required_packages[
+    !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
+  ]
 
   if (length(missing_packages) > 0) {
     missing_bioc <- intersect(missing_packages, c("cmapR"))

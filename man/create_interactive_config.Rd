@@ -36,7 +36,7 @@ This function requires the tcltk package, which is usually included with R.
 If the GUI version fails, you can use create_console_config() as an alternative.
 }
 \examples{
-\dontrun{
+\donttest{
 # Create interactive configuration
 selections <- create_interactive_config("databases/siginfo_beta.txt")
 

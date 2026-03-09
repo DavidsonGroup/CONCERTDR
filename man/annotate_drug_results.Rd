@@ -70,7 +70,7 @@ Integrate signature matching results with annotations from
 three analysis-ready tables and one drug context summary table.
 }
 \examples{
-\dontrun{
+\donttest{
 results <- read.csv("sig_match_xsum_results.csv")
 
 views <- annotate_drug_results(

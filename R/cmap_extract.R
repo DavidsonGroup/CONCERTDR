@@ -83,7 +83,7 @@ process_combination <- function(combination, rid, genenames, sig_info,
       rownames(df) <- genenames
 
       # Write to file
-      write.table(df, file = output_file, sep = "\t", quote = FALSE)
+      utils::write.table(df, file = output_file, sep = "\t", quote = FALSE)
       message(sprintf("Successfully wrote data to %s", output_file))
     } else {
       message(sprintf("No data found for this combination"))
@@ -120,6 +120,22 @@ process_combination <- function(combination, rid, genenames, sig_info,
 #' @param gctx_file Path to the GCTX file
 #' @param output_dir Directory to save output files
 #' @return List of processed files (invisibly)
+#'
+#' @examples
+#' is.function(process_combinations_file)
+#'
+#' \donttest{
+#' # Requires the full CMap files downloaded from clue.io
+#' cfg <- create_cmap_config_template(dest_dir = tempdir(), overwrite = TRUE)
+#' process_combinations_file(
+#'   combinations_file = cfg,
+#'   gctx_file     = "path/to/level5_beta_trt_cp_n720216x12328.gctx",
+#'   geneinfo_file = "path/to/geneinfo_beta.txt",
+#'   siginfo_file  = "path/to/siginfo_beta.txt",
+#'   output_dir    = tempdir()
+#' )
+#' }
+#'
 #' @export
 process_combinations_file <- function(combinations_file, task_id = NULL,
                                       geneinfo_file = "geneinfo_beta.txt",
@@ -186,7 +202,7 @@ process_combinations_file <- function(combinations_file, task_id = NULL,
     output_files <- c(output_files, output_file)
   } else {
     # Process all combinations
-    for (i in 1:nrow(combinations)) {
+    for (i in seq_len(nrow(combinations))) {
       message(sprintf("\n--- Combination %d of %d ---\n", i, nrow(combinations)))
       output_file <- process_combination(combinations[i, ], rid, genenames, sig_info, gctx_file, output_dir)
       output_files <- c(output_files, output_file)

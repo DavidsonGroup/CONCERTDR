@@ -64,9 +64,14 @@ write_config_file <- function(options_list, file_path) {
 #' @return Data frame of combinations
 #'
 #' @examples
-#' \dontrun{
+#' cfg <- create_cmap_config_template(dest_dir = tempdir(), overwrite = TRUE)
+#' comb <- generate_combinations_from_config(cfg, verbose = FALSE)
+#' head(comb)
+#'
+#' \donttest{
 #' # First create a configuration file
-#' extract_cmap_parameters("databases/siginfo_beta.txt")
+#' siginfo_file <- system.file("extdata", "example_siginfo.txt", package = "CONCERTDR")
+#' extract_cmap_parameters(siginfo_file)
 #'
 #' # Then edit the config file to select desired parameters
 #' # Leave sections empty to use all options for that parameter
@@ -124,6 +129,10 @@ generate_combinations_from_config <- function(config_file, verbose = TRUE) {
 #'
 #' @return Path to the template file (invisibly)
 #'
+#' @examples
+#' cfg <- create_cmap_config_template(dest_dir = tempdir(), overwrite = TRUE)
+#' cat("Template written to:", cfg, "\n")
+#'
 #' @export
 create_cmap_config_template <- function(dest_dir = "conf",
                                         template_name = "cmap_options_template.conf",
@@ -161,6 +170,11 @@ create_cmap_config_template <- function(dest_dir = "conf",
 #' @param return_selected Whether to return selected values (default: TRUE)
 #'
 #' @return List with parsed configuration (all options and selected options)
+#'
+#' @examples
+#' cfg_file <- create_cmap_config_template(dest_dir = tempdir(), overwrite = TRUE)
+#' cfg      <- read_cmap_config(cfg_file)
+#' names(cfg)
 #'
 #' @export
 read_cmap_config <- function(config_file, return_selected = TRUE) {
