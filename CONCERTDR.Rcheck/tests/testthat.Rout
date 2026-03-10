@@ -1,0 +1,123 @@
+
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(testthat)
+> library(CONCERTDR)
+CONCERTDR: Drug Response Data Analysis Tools
+Version: 0.5.0
+> 
+> test_check("CONCERTDR")
+reading dummy.gctx
+reading dummy.gctx
+reading dummy.gctx
+reading dummy.gctx
+Reading signature data from no_such_file.txt
+Reading signature data from /Users/hengxin/Downloads/CONCERT_DR_updated/CONCERT_DR/CONCERTDR.Rcheck/CONCERTDR/extdata/example_signature.txt
+Preparing reference data for analysis...
+Reading signature data from /Users/hengxin/Downloads/CONCERT_DR_updated/CONCERT_DR/CONCERTDR.Rcheck/CONCERTDR/extdata/example_signature.txt
+Preparing reference data for analysis...
+Found 0/11 up-regulated genes (0%) and 0/9 down-regulated genes (0%) in reference
+Reading signature data from /Users/hengxin/Downloads/CONCERT_DR_updated/CONCERT_DR/CONCERTDR.Rcheck/CONCERTDR/extdata/example_signature.txt
+Preparing reference data for analysis...
+Found 11/11 up-regulated genes (100%) and 9/9 down-regulated genes (100%) in reference
+Running KS score...
+Reading signature data from /Users/hengxin/Downloads/CONCERT_DR_updated/CONCERT_DR/CONCERTDR.Rcheck/CONCERTDR/extdata/example_signature.txt
+Preparing reference data for analysis...
+Found 11/11 up-regulated genes (100%) and 9/9 down-regulated genes (100%) in reference
+Invalid methods specified: INVALID_METHOD. Will be ignored.
+Reading signature data from /Users/hengxin/Downloads/CONCERT_DR_updated/CONCERT_DR/CONCERTDR.Rcheck/CONCERTDR/extdata/example_signature.txt
+Preparing reference data for analysis...
+Found 11/11 up-regulated genes (100%) and 9/9 down-regulated genes (100%) in reference
+Running KS score...
+Reading signature data from /Users/hengxin/Downloads/CONCERT_DR_updated/CONCERT_DR/CONCERTDR.Rcheck/CONCERTDR/extdata/example_signature.txt
+Preparing reference data for analysis...
+Found 11/11 up-regulated genes (100%) and 9/9 down-regulated genes (100%) in reference
+Running KS score...
+Running XSum score with topN = 4...
+Reading signature data from /Users/hengxin/Downloads/CONCERT_DR_updated/CONCERT_DR/CONCERTDR.Rcheck/CONCERTDR/extdata/example_signature.txt
+Preparing reference data for analysis...
+Found 11/11 up-regulated genes (100%) and 9/9 down-regulated genes (100%) in reference
+Running KS score...
+Running Zhang score...
+Reading signature data from /Users/hengxin/Downloads/CONCERT_DR_updated/CONCERT_DR/CONCERTDR.Rcheck/CONCERTDR/extdata/example_signature.txt
+Preparing reference data for analysis...
+Found 11/11 up-regulated genes (100%) and 9/9 down-regulated genes (100%) in reference
+Running KS score...
+Reading signature data from /Users/hengxin/Downloads/CONCERT_DR_updated/CONCERT_DR/CONCERTDR.Rcheck/CONCERTDR/extdata/example_signature.txt
+Preparing reference data for analysis...
+Found 11/11 up-regulated genes (100%) and 9/9 down-regulated genes (100%) in reference
+Running KS score...
+Running XCos score with topN = 4...
+Running XSum score with topN = 4...
+Running GSEA weight 0 score...
+Running GSEA weight 1 score...
+Running GSEA weight 2 score...
+Running Zhang score...
+Reading signature data from /Users/hengxin/Downloads/CONCERT_DR_updated/CONCERT_DR/CONCERTDR.Rcheck/CONCERTDR/extdata/example_signature.txt
+Preparing reference data for analysis...
+Found 11/11 up-regulated genes (100%) and 9/9 down-regulated genes (100%) in reference
+Running KS score...
+Saved ks results to /var/folders/z3/lxpz_ky97xd8l_j5qx23tp4r0000gn/T//Rtmpd7neRK/working_dir/RtmpvMo2zv/file8c893b341c42/sig_match_ks_results.csv
+Saved summary report to /var/folders/z3/lxpz_ky97xd8l_j5qx23tp4r0000gn/T//Rtmpd7neRK/working_dir/RtmpvMo2zv/file8c893b341c42/summary_results.csv
+Reading signature data from /Users/hengxin/Downloads/CONCERT_DR_updated/CONCERT_DR/CONCERTDR.Rcheck/CONCERTDR/extdata/example_signature.txt
+Preparing reference data for analysis...
+Found 11/11 up-regulated genes (100%) and 9/9 down-regulated genes (100%) in reference
+Running KS score...
+Reading signature data from /Users/hengxin/Downloads/CONCERT_DR_updated/CONCERT_DR/CONCERTDR.Rcheck/CONCERTDR/extdata/example_signature.txt
+Preparing reference data for analysis...
+Found 11/11 up-regulated genes (100%) and 9/9 down-regulated genes (100%) in reference
+Running XSum score with topN = 2...
+Running XCos score with topN = 2...
+Reading signature data from /Users/hengxin/Downloads/CONCERT_DR_updated/CONCERT_DR/CONCERTDR.Rcheck/CONCERTDR/extdata/example_signature.txt
+Preparing reference data for analysis...
+Found 11/11 up-regulated genes (100%) and 9/9 down-regulated genes (100%) in reference
+Running KS score...
+Reading signature data from /Users/hengxin/Downloads/CONCERT_DR_updated/CONCERT_DR/CONCERTDR.Rcheck/CONCERTDR/extdata/example_signature.txt
+Preparing reference data for analysis...
+Found 11/11 up-regulated genes (100%) and 9/9 down-regulated genes (100%) in reference
+Running KS score...
+Top 3 compounds across all methods:
+        compound method Score pValue global_rank
+DEMO001  DEMO001     ks     0      1         5.5
+DEMO002  DEMO002     ks     0      1         5.5
+DEMO003  DEMO003     ks     0      1         5.5
+Reading signature data from /Users/hengxin/Downloads/CONCERT_DR_updated/CONCERT_DR/CONCERTDR.Rcheck/CONCERTDR/extdata/example_signature.txt
+Preparing reference data for analysis...
+Found 11/11 up-regulated genes (100%) and 9/9 down-regulated genes (100%) in reference
+Running KS score...
+No summary data available.
+Using precomputed matrix: 10 perturbations × 20 genes
+[ FAIL 0 | WARN 0 | SKIP 15 | PASS 201 ]
+
+══ Skipped tests (15) ══════════════════════════════════════════════════════════
+• {ComplexHeatmap} is not installed (3): 'test-visualization-extended.R:307:3',
+  'test-visualization-extended.R:332:3', 'test-visualization-extended.R:360:3'
+• {RecordLinkage} is not installed (7): 'test-result-summary.R:377:3',
+  'test-result-summary.R:385:3', 'test-result-summary.R:393:3',
+  'test-result-summary.R:399:3', 'test-result-summary.R:406:3',
+  'test-result-summary.R:412:3', 'test-result-summary.R:420:3'
+• {ggplot2} is not installed (5): 'test-signature-matching-extended.R:340:3',
+  'test-signature-matching-extended.R:354:3',
+  'test-signature-matching-extended.R:368:3',
+  'test-signature-matching-extended.R:382:3',
+  'test-signature-matching-extended.R:396:3'
+
+[ FAIL 0 | WARN 0 | SKIP 15 | PASS 201 ]
+> 
+> proc.time()
+   user  system elapsed 
+  3.815   0.239   4.176 

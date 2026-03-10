@@ -1,0 +1,35 @@
+Package: CONCERTDR
+Type: Package
+Title: Drug Response Data Analysis Using CMap Database
+Version: 0.5.0
+Authors@R: person("Hengxin", "Pan",
+    email = "pan.h@wehi.edu.au",
+    role = c("aut", "cre"),
+    comment = c(ORCID = "0009-0004-1274-1612"))
+Description: Provides a complete pipeline for drug repurposing analysis using
+    the Connectivity Map (CMap) L1000 database. Functionality includes database
+    subsetting, reference profile extraction from GCTX files, signature matching
+    via Kolmogorov-Smirnov, GSEA-based, cosine similarity, and other methods,
+    result annotation against CMap compound metadata, z-score matrix extraction,
+    and publication-quality clustermap visualization via ComplexHeatmap.
+    Connectivity scoring methods (KS, GSEA, XCos, XSum, Zhang) are implemented
+    internally based on the algorithms described in Lamb et al. (2006),
+    Subramanian et al. (2005), Cheng et al. (2014), and Zhang & Gant (2008),
+    removing the need for external GitHub-only dependencies.
+License: MIT + file LICENSE
+Encoding: UTF-8
+RoxygenNote: 7.3.3
+URL: https://github.com/DavidsonGroup/CONCERT_DR
+BugReports: https://github.com/DavidsonGroup/CONCERT_DR/issues
+Depends: R (>= 4.5.0)
+Imports: data.table, cmapR, grid, stats, utils
+Suggests: knitr, rmarkdown, testthat, BiocStyle, ComplexHeatmap,
+        circlize, ggplot2, RecordLinkage
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+biocViews: GeneExpression, Pharmacogenomics, Software, Transcriptomics,
+        DataImport
+NeedsCompilation: no
+Packaged: 2026-03-10 09:36:31 UTC; hengxin
+Author: Hengxin Pan [aut, cre] (ORCID: <https://orcid.org/0009-0004-1274-1612>)
+Maintainer: Hengxin Pan <pan.h@wehi.edu.au>
