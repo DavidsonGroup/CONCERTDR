@@ -226,25 +226,6 @@ test_that("plot method errors for invalid method and plot type", {
   expect_error(plot(obj, method = "ks", plot_type = "bad_plot"), "Invalid plot_type")
 })
 
-test_that("run_cmap_workflow composes extraction and matching", {
-  fake_ref <- data.frame(gene_symbol = c("TP53", "MYC"), sig1 = c(1, -1), stringsAsFactors = FALSE)
-  fake_result <- make_mock_signature_result()
-
-  testthat::local_mocked_bindings(
-    extract_cmap_data_from_config = function(...) fake_ref,
-    process_signature_with_df = function(...) fake_result,
-    .package = "CONCERTDR"
-  )
-
-  out <- run_cmap_workflow(
-    config_file = "dummy_config.txt",
-    signature_file = "dummy_signature.txt",
-    verbose = FALSE
-  )
-
-  expect_equal(class(out), "cmap_signature_result")
-})
-
 # ── End-to-end integration test ──────────────────────────────────────────────
 
 test_that("process_signature_with_df runs end-to-end with internal methods", {

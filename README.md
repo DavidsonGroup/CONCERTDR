@@ -122,10 +122,9 @@ If you have the original CMap files, you can still pass `gctx_file`,
 `geneinfo_file`, and `siginfo_file` to extract the heatmap matrix from GCTX
 instead of using the precomputed reference matrix.
 
-By default, the core analysis and plotting functions do not write files. The
-same is now true for `extract_cmap_parameters()`: files are only created when
-you explicitly request them, for example with `save_files = TRUE`,
-`write_outputs = TRUE`, `write_config = TRUE`, `output_zscores = ...`, or
+By default, the core analysis and plotting functions do not write files. Files
+are only created when you explicitly request them, for example with
+`save_files = TRUE`, `write_outputs = TRUE`, `output_zscores = ...`, or
 `save_png = TRUE`.
 
 ---
@@ -287,16 +286,12 @@ or set explicitly with `width`, `height`, `dpi`.
 | Function | Description |
 |---|---|
 | `extract_cmap_data_from_siginfo()` | Build reference matrix from filtered siginfo |
-| `extract_cmap_data_from_config()` | Build reference matrix from a config file |
-| `process_combinations()` | Extract data for parameter combinations |
-| `process_combinations_file()` | Same, driven by a file (SLURM-friendly) |
 
 ### Signature matching
 
 | Function | Description |
 |---|---|
 | `process_signature_with_df()` | Score a signature against an in-memory reference |
-| `run_cmap_workflow()` | End-to-end workflow from config to results |
 
 ### Result annotation
 
@@ -312,20 +307,6 @@ or set explicitly with `width`, `height`, `dpi`.
 |---|---|
 | `extract_signature_zscores()` | Extract GCTX z-score matrix as an R object |
 | `plot_signature_direction_tile_barcode()` | ComplexHeatmap barcode plot (z-score × perturbation) |
-
-### Config / utilities
-
-| Function | Description |
-|---|---|
-| `create_cmap_config_template()` | Create a config template |
-| `read_cmap_config()` | Read a config file |
-| `generate_combinations_from_config()` | Enumerate parameter combinations from config |
-| `generate_combinations_from_selections()` | Enumerate from explicit selections |
-| `extract_cmap_parameters()` | List available parameters in siginfo |
-| `interactive_cmap_setup()` | Interactive CLI parameter selection |
-| `demonstrate_workflow()` | Demo run on bundled example data |
-
----
 
 ## Developing / packaging
 

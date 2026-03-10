@@ -47,8 +47,7 @@ cat("Down-regulated genes:", sum(sig$log2FC < 0), "\n")
 ### 2. The Reference Matrix
 
 A data frame with genes as rows and CMap signature IDs as columns, produced
-by `extract_cmap_data_from_config()` or `extract_cmap_data_from_siginfo()`
-(see the *CMap Workflow* vignette). The bundled example is used here:
+by `extract_cmap_data_from_siginfo()`. The bundled example is used here:
 
 ```{r reference}
 ref_file <- system.file("extdata", "example_reference_df.csv", package = "CONCERTDR")
@@ -161,23 +160,6 @@ plot_signature_direction_tile_barcode(
   max_perts      = 30,
   save_png       = TRUE,
   output_png     = "barcode_heatmap.png"
-)
-```
-
-## Complete One-Step Workflow
-
-`run_cmap_workflow()` wraps extraction + matching into a single call:
-
-```{r workflow, eval=FALSE}
-all_results <- run_cmap_workflow(
-  config_file   = "conf/my_config.conf",
-  signature_file = sig_file,
-  geneinfo_file = "path/to/geneinfo_beta.txt",
-  siginfo_file  = "path/to/siginfo_beta.txt",
-  gctx_file     = "path/to/level5_beta_trt_cp_n720216x12328.gctx",
-  output_dir    = "results",
-  methods       = c("ks", "xcos"),
-  permutations  = 1000
 )
 ```
 

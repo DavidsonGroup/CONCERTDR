@@ -586,78 +586,10 @@ plot.cmap_signature_result <- function(x, method = NULL, plot_type = "scores", t
 #' @param topN Integer; number of top-ranked genes to use for XCos and XSum methods (default: 4)
 #' @param permutations Number of permutations for statistical testing (default: 100)
 #' @param save_files Logical; whether to write per-method and summary result
-#'   files to \\code{output_dir} (default: FALSE)
+#'   files to \code{output_dir} (default: FALSE)
 #' @param keep_all_genes Logical; whether to keep all genes when extracting CMap data (default: TRUE)
 #' @param read_method Character; method to use for reading signature file ("auto", "fread", or "read.table") (default: "auto")
 #' @param verbose Logical; whether to print progress messages (default: TRUE)
 #'
 #' @return List containing results from all methods
 #'
-#' @examples
-#' # Lightweight runnable setup example:
-#' cfg_file <- create_cmap_config_template(dest_dir = tempdir(), overwrite = TRUE)
-#' file.exists(cfg_file)
-#'
-#' \donttest{
-#' # Requires the full CMap files downloaded from clue.io
-#' sig_file <- system.file("extdata", "example_signature.txt",
-#'                         package = "CONCERTDR")
-#' cfg_file <- create_cmap_config_template(dest_dir = tempdir(), overwrite = TRUE)
-#' results  <- run_cmap_workflow(
-#'   config_file    = cfg_file,
-#'   signature_file = sig_file,
-#'   geneinfo_file  = "path/to/geneinfo_beta.txt",
-#'   siginfo_file   = "path/to/siginfo_beta.txt",
-#'   gctx_file      = "path/to/level5_beta_trt_cp_n720216x12328.gctx",
-#'   output_dir     = tempdir(),
-#'   methods        = c("ks", "xsum"),
-#'   permutations   = 100,
-#'   save_files     = FALSE
-#' )
-#' }
-#'
-#' @export
-run_cmap_workflow <- function(config_file, signature_file,
-                              geneinfo_file = "geneinfo_beta.txt",
-                              siginfo_file = "siginfo_beta.txt",
-                              gctx_file = "level5_beta_trt_cp_n720216x12328.gctx",
-                              output_dir = "results",
-                              methods = c("ks", "xcos", "xsum", "gsea0", "gsea1", "gsea2", "zhang"),
-                              topN = 4,
-                              permutations = 100,
-                              save_files = FALSE,
-                              keep_all_genes = TRUE,
-                              read_method = "auto",
-                              verbose = TRUE) {
-
-  # Step 1: Extract CMap data based on config file
-  if (verbose) message("Step 1: Extracting CMap data based on configuration...")
-  reference_df <- extract_cmap_data_from_config(
-    config_file = config_file,
-    geneinfo_file = geneinfo_file,
-    siginfo_file = siginfo_file,
-    gctx_file = gctx_file,
-    keep_all_genes = keep_all_genes,
-    verbose = verbose
-  )
-
-  if (nrow(reference_df) == 0) {
-    stop("No data extracted from CMap. Please check your configuration and input files.")
-  }
-
-  # Step 2: Process signature against the extracted data
-  if (verbose) message("\nStep 2: Processing signature against reference data...")
-  results <- process_signature_with_df(
-    signature_file = signature_file,
-    reference_df = reference_df,
-    output_dir = output_dir,
-    permutations = permutations,
-    methods = methods,
-    topN = topN,
-    save_files = save_files,
-    read_method = read_method
-  )
-
-  if (verbose) message("\nWorkflow completed successfully!")
-  return(results)
-}

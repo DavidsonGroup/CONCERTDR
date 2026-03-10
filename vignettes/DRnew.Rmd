@@ -66,7 +66,7 @@ sig_file <- system.file("extdata", "example_signature.txt",    package = "CONCER
 ref_file <- system.file("extdata", "example_reference_df.csv", package = "CONCERTDR")
 
 # Read the example reference data frame
-# In a real analysis this is produced by extract_cmap_data_from_config()
+# In a real analysis this is typically produced by extract_cmap_data_from_siginfo()
 ref_df <- read.csv(ref_file, row.names = 1, check.names = FALSE)
 cat("Reference matrix:", nrow(ref_df), "genes x", ncol(ref_df), "signatures\n")
 
@@ -79,15 +79,14 @@ head(sig)
 
 | Module | Key functions |
 |--------|---------------|
-| Data extraction | `extract_cmap_parameters()`, `generate_combinations_from_config()`, `extract_cmap_data_from_config()`, `extract_cmap_data_from_siginfo()` |
+| Data extraction | `extract_cmap_data_from_siginfo()` |
 | Siginfo filtering | `subset_siginfo_beta()` |
-| Signature matching | `process_signature_with_df()`, `run_cmap_workflow()` |
+| Signature matching | `process_signature_with_df()` |
 | Result annotation | `annotate_drug_results()`, `fuzzy_drug_match()` |
 | Visualisation | `extract_signature_zscores()`, `plot_signature_direction_tile_barcode()` |
 
 See the companion vignettes for detailed walkthroughs:
 
-- **CMap Workflow** - extracting reference data from the GCTX file
 - **Signature Matching** - matching and annotating results end-to-end
 
 ## Session Info
