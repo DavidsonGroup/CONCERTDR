@@ -149,7 +149,7 @@ annotate_drug_results <- function(results_df,
     names(df) <- trimws(names(df))
     df
   }
-  
+
   parse_compound_context <- function(df, col = "compound") {
     if (!col %in% names(df)) {
       stop("Missing column for compound parsing: ", col)
@@ -282,7 +282,11 @@ annotate_drug_results <- function(results_df,
   sig_ids <- unique(as.character(res[[compound_col]]))
   sig_ids <- sig_ids[!is.na(sig_ids) & nzchar(sig_ids)]
 
-  sig_cols <- c("sig_id", "pert_type", "pert_id", "pert_iname")
+  sig_cols <- c(
+    "sig_id", "pert_type", "pert_id", "pert_iname", "pert_name",
+    "cmap_name", "phase", "compound_aliases", "canonical_smiles",
+    "inchi_key"
+  )
   siginfo <- read_or_use_df(sig_info_file, "Signature info", select_cols = sig_cols)
   siginfo <- siginfo[, intersect(sig_cols, names(siginfo)), drop = FALSE]
 
