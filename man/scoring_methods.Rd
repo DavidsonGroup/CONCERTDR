@@ -3,18 +3,16 @@
 \name{scoring_methods}
 \alias{scoring_methods}
 \title{Internal Connectivity Scoring Methods}
+\value{
+None; this is an internal documentation topic.
+}
 \description{
 Self-contained implementations of connectivity scoring methods for matching
 disease gene expression signatures to compound-induced gene expression
-profiles. These functions were originally provided by the RCSM package
-(Lin, K.) and have been re-implemented here to remove the external GitHub
-dependency, enabling Bioconductor compliance.
+profiles. 
 
 All seven methods share a common permutation-based framework for computing
 p-values and BH-adjusted p-values.
-}
-\value{
-None; this is an internal documentation topic.
 }
 \references{
 Lamb J et al. Science, 2006, 313(5795): 1929-1935 (KS method).

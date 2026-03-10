@@ -3,11 +3,11 @@
 \name{cmap_extract}
 \alias{cmap_extract}
 \title{Extract Data from CMap GCTX Files for Specified Combinations}
+\value{
+None; this is an internal documentation topic.
+}
 \description{
 Functions to extract expression data from CMap GCTX files based on
 specified combinations of time points, dosages, and cell lines.
-}
-\value{
-None; this is an internal documentation topic.
 }
 \keyword{internal}
