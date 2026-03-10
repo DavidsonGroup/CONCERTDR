@@ -6,6 +6,12 @@
 \usage{
 .validate_ref_matrix(refMatrix)
 }
+\arguments{
+\item{refMatrix}{Numeric matrix or data frame with genes as rows and samples as columns.}
+}
+\value{
+Numeric matrix with preserved row and column names.
+}
 \description{
 Validate and coerce reference matrix
 }

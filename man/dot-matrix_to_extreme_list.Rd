@@ -6,6 +6,14 @@
 \usage{
 .matrix_to_extreme_list(refMatrix, topN)
 }
+\arguments{
+\item{refMatrix}{Numeric matrix with genes as rows and samples as columns.}
+
+\item{topN}{Number of most positive and most negative genes to retain.}
+}
+\value{
+List of named numeric vectors containing the top and bottom genes per sample.
+}
 \description{
 Convert expression matrix to top-N / bottom-N named-value lists (for XCos/XSum)
 }

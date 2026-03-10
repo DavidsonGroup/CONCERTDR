@@ -6,6 +6,12 @@
 \usage{
 .matrix_to_signed_rank_list(refMatrix)
 }
+\arguments{
+\item{refMatrix}{Numeric matrix with genes as rows and samples as columns.}
+}
+\value{
+List of named numeric vectors containing signed ranks per sample.
+}
 \description{
 Convert expression matrix to signed-rank lists (for Zhang)
 }

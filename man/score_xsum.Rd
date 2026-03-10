@@ -26,6 +26,9 @@ score_xsum(
 
 \item{pAdjMethod}{P-value adjustment method (default: "BH").}
 }
+\value{
+Data frame with Score, pValue, pAdjValue per sample.
+}
 \description{
 Extreme sum score
 }

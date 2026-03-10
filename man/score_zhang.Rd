@@ -23,6 +23,9 @@ score_zhang(
 
 \item{pAdjMethod}{P-value adjustment method (default: "BH").}
 }
+\value{
+Data frame with Score, pValue, pAdjValue per sample.
+}
 \description{
 Zhang connectivity score
 }

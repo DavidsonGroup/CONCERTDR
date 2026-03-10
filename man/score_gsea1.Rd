@@ -23,6 +23,9 @@ score_gsea1(
 
 \item{pAdjMethod}{P-value adjustment method (default: "BH").}
 }
+\value{
+Data frame with Score, pValue, pAdjValue per sample.
+}
 \description{
 GSEA weight-1 connectivity score
 }

@@ -7,4 +7,7 @@
 Functions to extract expression data from CMap GCTX files based on
 specified combinations of time points, dosages, and cell lines.
 }
+\value{
+None; this is an internal documentation topic.
+}
 \keyword{internal}

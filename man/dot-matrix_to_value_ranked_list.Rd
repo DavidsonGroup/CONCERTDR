@@ -6,6 +6,12 @@
 \usage{
 .matrix_to_value_ranked_list(refMatrix)
 }
+\arguments{
+\item{refMatrix}{Numeric matrix with genes as rows and samples as columns.}
+}
+\value{
+List of named numeric vectors ordered decreasingly by expression for each sample.
+}
 \description{
 Convert expression matrix to sorted named-value lists (for GSEA-w1/w2)
 }

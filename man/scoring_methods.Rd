@@ -13,6 +13,9 @@ dependency, enabling Bioconductor compliance.
 All seven methods share a common permutation-based framework for computing
 p-values and BH-adjusted p-values.
 }
+\value{
+None; this is an internal documentation topic.
+}
 \references{
 Lamb J et al. Science, 2006, 313(5795): 1929-1935 (KS method).
 Subramanian A et al. PNAS, 2005, 102(43): 15545-15550 (GSEA methods).

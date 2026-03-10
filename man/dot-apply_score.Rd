@@ -6,6 +6,16 @@
 \usage{
 .apply_score(refList, scoreFun, ...)
 }
+\arguments{
+\item{refList}{List of per-sample reference objects.}
+
+\item{scoreFun}{Function used to score one reference object.}
+
+\item{...}{Additional arguments passed to \code{scoreFun}.}
+}
+\value{
+Named or unnamed numeric vector of scores, one per element of \code{refList}.
+}
 \description{
 Apply a scoring function across reference lists, optionally in parallel
 }

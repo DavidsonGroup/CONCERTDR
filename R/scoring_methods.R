@@ -3,12 +3,11 @@
 #' @description
 #' Self-contained implementations of connectivity scoring methods for matching
 #' disease gene expression signatures to compound-induced gene expression
-#' profiles. These functions were originally provided by the RCSM package
-#' (Lin, K.) and have been re-implemented here to remove the external GitHub
-#' dependency, enabling Bioconductor compliance.
+#' profiles. 
 #'
 #' All seven methods share a common permutation-based framework for computing
 #' p-values and BH-adjusted p-values.
+#' @return None; this is an internal documentation topic.
 #'
 #' @references
 #' Lamb J et al. Science, 2006, 313(5795): 1929-1935 (KS method).
@@ -25,6 +24,8 @@ NULL
 # ──────────────────────────────────────────────────────────────────────────────
 
 #' Validate and coerce reference matrix
+#' @param refMatrix Numeric matrix or data frame with genes as rows and samples as columns.
+#' @return Numeric matrix with preserved row and column names.
 #' @keywords internal
 .validate_ref_matrix <- function(refMatrix) {
   if (is.data.frame(refMatrix)) refMatrix <- as.matrix(refMatrix)
@@ -35,6 +36,8 @@ NULL
 }
 
 #' Convert expression matrix to sorted gene-name lists (for KS / GSEA-w0)
+#' @param refMatrix Numeric matrix with genes as rows and samples as columns.
+#' @return List of character vectors ordered decreasingly by expression for each sample.
 #' @keywords internal
 .matrix_to_name_ranked_list <- function(refMatrix) {
   lapply(seq_len(ncol(refMatrix)), function(i) {
@@ -43,6 +46,8 @@ NULL
 }
 
 #' Convert expression matrix to sorted named-value lists (for GSEA-w1/w2)
+#' @param refMatrix Numeric matrix with genes as rows and samples as columns.
+#' @return List of named numeric vectors ordered decreasingly by expression for each sample.
 #' @keywords internal
 .matrix_to_value_ranked_list <- function(refMatrix) {
   lapply(seq_len(ncol(refMatrix)), function(i) {
@@ -51,6 +56,9 @@ NULL
 }
 
 #' Convert expression matrix to top-N / bottom-N named-value lists (for XCos/XSum)
+#' @param refMatrix Numeric matrix with genes as rows and samples as columns.
+#' @param topN Number of most positive and most negative genes to retain.
+#' @return List of named numeric vectors containing the top and bottom genes per sample.
 #' @keywords internal
 .matrix_to_extreme_list <- function(refMatrix, topN) {
   lapply(seq_len(ncol(refMatrix)), function(i) {
@@ -60,6 +68,8 @@ NULL
 }
 
 #' Convert expression matrix to signed-rank lists (for Zhang)
+#' @param refMatrix Numeric matrix with genes as rows and samples as columns.
+#' @return List of named numeric vectors containing signed ranks per sample.
 #' @keywords internal
 .matrix_to_signed_rank_list <- function(refMatrix) {
   lapply(seq_len(ncol(refMatrix)), function(i) {
@@ -86,6 +96,10 @@ NULL
 }
 
 #' Apply a scoring function across reference lists, optionally in parallel
+#' @param refList List of per-sample reference objects.
+#' @param scoreFun Function used to score one reference object.
+#' @param ... Additional arguments passed to \code{scoreFun}.
+#' @return Named or unnamed numeric vector of scores, one per element of \code{refList}.
 #' @keywords internal
 .apply_score <- function(refList, scoreFun, ...) {
   vapply(refList, scoreFun, numeric(1), ...)
@@ -156,6 +170,7 @@ score_ks <- function(refMatrix, queryUp, queryDown,
 
 #' GSEA weight-0 connectivity score
 #' @inheritParams score_ks
+#' @return Data frame with Score, pValue, pAdjValue per sample.
 #' @keywords internal
 score_gsea0 <- function(refMatrix, queryUp, queryDown,
                         permuteNum = 10000, pAdjMethod = "BH") {
@@ -212,6 +227,7 @@ score_gsea0 <- function(refMatrix, queryUp, queryDown,
 
 #' GSEA weight-1 connectivity score
 #' @inheritParams score_ks
+#' @return Data frame with Score, pValue, pAdjValue per sample.
 #' @keywords internal
 score_gsea1 <- function(refMatrix, queryUp, queryDown,
                         permuteNum = 10000, pAdjMethod = "BH") {
@@ -268,6 +284,7 @@ score_gsea1 <- function(refMatrix, queryUp, queryDown,
 
 #' GSEA weight-2 connectivity score
 #' @inheritParams score_ks
+#' @return Data frame with Score, pValue, pAdjValue per sample.
 #' @keywords internal
 score_gsea2 <- function(refMatrix, queryUp, queryDown,
                         permuteNum = 10000, pAdjMethod = "BH") {
@@ -373,6 +390,7 @@ score_xcos <- function(refMatrix, query, topN = 500,
 #'
 #' @inheritParams score_ks
 #' @param topN Number of top/bottom genes per reference profile (default: 500).
+#' @return Data frame with Score, pValue, pAdjValue per sample.
 #' @keywords internal
 score_xsum <- function(refMatrix, queryUp, queryDown, topN = 500,
                        permuteNum = 10000, pAdjMethod = "BH") {
@@ -414,6 +432,7 @@ score_xsum <- function(refMatrix, queryUp, queryDown, topN = 500,
 
 #' Zhang connectivity score
 #' @inheritParams score_ks
+#' @return Data frame with Score, pValue, pAdjValue per sample.
 #' @keywords internal
 score_zhang <- function(refMatrix, queryUp, queryDown,
                         permuteNum = 10000, pAdjMethod = "BH") {
