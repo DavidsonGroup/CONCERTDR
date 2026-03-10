@@ -1,0 +1,242 @@
+---
+title: "Introduction to CONCERTDR"
+author:
+  - name: Hengxin Pan
+    affiliation: Walter and Eliza Hall Institute of Medical Research
+    email: pan.h@wehi.edu.au
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    number_sections: true
+vignette: >
+  %\VignetteIndexEntry{Introduction to CONCERTDR}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse  = TRUE,
+  comment   = "#>",
+  message   = FALSE,
+  warning   = FALSE
+)
+```
+
+# Overview
+
+**CONCERTDR** (**CO**ntext-aware **N**etwork-based **CE**llular and
+**R**epurposing **T**ool for **D**rug **R**epurposing) provides a complete
+computational pipeline for identifying candidate repurposed drugs by matching
+disease differential-expression signatures against the Connectivity Map (CMap)
+L1000 perturbation database.
+
+The main steps of the workflow are:
+
+1. **Filter** the CMap signature metadata (`siginfo_beta.txt`) to the
+   cell lines and perturbation types relevant to your disease context.
+2. **Build** a reference expression matrix from the CMap GCTX file.
+3. **Score** your disease signature against the reference matrix using one or
+   more connectivity scoring methods.
+4. **Annotate** hits with compound metadata (mechanism of action, clinical
+   phase, targets).
+5. **Visualise** the top hits as a directional barcode heatmap.
+
+All steps in this vignette use the small example dataset bundled with the
+package, so no external downloads are required to run the code.
+
+# Installation
+
+```{r install, eval=FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("CONCERTDR")
+
+# Optional but recommended for visualisation
+BiocManager::install("ComplexHeatmap")
+install.packages("circlize")
+```
+
+```{r load}
+library(CONCERTDR)
+```
+
+# Bundled Example Data
+
+The package ships with a self-contained toy dataset in `inst/extdata/`:
+
+| File | Description |
+|------|-------------|
+| `example_signature.txt` | 20-gene disease signature with log2FC values |
+| `example_reference_df.csv` | 20 genes × 10 CMap-style signatures |
+| `example_siginfo.txt` | Metadata for the 10 example signatures |
+| `example_geneinfo.txt` | Gene annotation for the 20 landmark genes |
+
+Use `system.file()` to locate these files — this function looks inside the
+installed package directory. **Do not** use `system.file()` for your own data
+files on disk; use plain `file.path()` or absolute paths instead.
+
+```{r bundled-files}
+sig_file  <- system.file("extdata", "example_signature.txt",
+                          package = "CONCERTDR")
+ref_file  <- system.file("extdata", "example_reference_df.csv",
+                          package = "CONCERTDR")
+sig_info_file <- system.file("extdata", "example_siginfo.txt",
+                              package = "CONCERTDR")
+gene_info_file <- system.file("extdata", "example_geneinfo.txt",
+                               package = "CONCERTDR")
+```
+
+## The query signature
+
+A signature file is a tab-delimited text file with two required columns:
+
+- `Gene`: HGNC gene symbols (uppercase)
+- `log2FC`: log2 fold-change (positive = up-regulated, negative = down-regulated)
+
+Rows should be sorted by `|log2FC|` descending so that the most informative
+genes are used first when `max_genes` is applied in later steps.
+
+```{r read-signature}
+signature <- read.delim(sig_file)
+head(signature, 10)
+```
+
+```{r signature-summary}
+cat("Up-regulated genes:  ", sum(signature$log2FC > 0), "\n")
+cat("Down-regulated genes:", sum(signature$log2FC < 0), "\n")
+```
+
+## The reference matrix
+
+In a full analysis this matrix is produced by
+`extract_cmap_data_from_siginfo()` (see the *Signature Matching* vignette).
+Here we use the pre-computed CSV bundled with the package.
+
+```{r read-reference}
+reference_df <- read.csv(ref_file, row.names = 1, check.names = FALSE)
+# The gene_symbol column is required by process_signature_with_df()
+reference_df$gene_symbol <- rownames(reference_df)
+
+cat("Reference dimensions:", nrow(reference_df), "genes ×",
+    ncol(reference_df) - 1, "signatures\n")
+reference_df[1:5, 1:6]
+```
+
+# A Minimal End-to-End Run
+
+The function `process_signature_with_df()` is the central workhorse of
+CONCERTDR. It accepts the signature file, the reference matrix, and a choice
+of scoring methods, and returns a structured `cmap_signature_result` object.
+
+```{r run-scoring}
+results <- process_signature_with_df(
+  signature_file = sig_file,
+  reference_df   = reference_df,
+  methods        = c("ks", "xsum"),
+  topN           = 4,          # genes used by XSum; increase for real data
+  permutations   = 100,        # increase to ≥1000 for publication-quality p-values
+  save_files     = FALSE
+)
+```
+
+## Inspecting the result object
+
+`print()` gives a compact overview:
+
+```{r print-results}
+print(results)
+```
+
+`summary()` lists the top hits across all methods ranked by a combined score:
+
+```{r summary-results}
+summary(results, top_n = 5)
+```
+
+Individual method results are data frames inside `results$results`:
+
+```{r inspect-ks}
+ks_df <- results$results$ks
+ks_df[order(ks_df$Score), ]
+```
+
+**Score interpretation:** a negative score indicates that the drug *reverses*
+the disease signature (potentially therapeutic); a positive score indicates
+that it *mimics* the signature (possibly aggravating).
+
+## Quick plots
+
+The `plot()` method supports two visualisation types out of the box.
+
+```{r plot-scores, fig.width=7, fig.height=4}
+plot(results, method = "ks", plot_type = "scores", top_n = 10)
+```
+
+```{r plot-volcano, fig.width=6, fig.height=4}
+plot(results, method = "ks", plot_type = "volcano")
+```
+
+# Available Scoring Methods
+
+CONCERTDR implements seven connectivity scoring methods internally:
+
+| Method | Argument | Reference |
+|--------|----------|-----------|
+| Kolmogorov–Smirnov | `"ks"` | Lamb *et al.* 2006 |
+| GSEA (weight 0) | `"gsea0"` | Subramanian *et al.* 2005 |
+| GSEA (weight 1) | `"gsea1"` | Subramanian *et al.* 2005 |
+| GSEA (weight 2) | `"gsea2"` | Subramanian *et al.* 2005 |
+| Extreme cosine | `"xcos"` | Cheng *et al.* 2014 |
+| Extreme sum | `"xsum"` | Cheng *et al.* 2014 |
+| Zhang score | `"zhang"` | Zhang & Gant 2008 |
+
+Run all methods at once by passing `methods = c("ks","xcos","xsum","gsea0","gsea1","gsea2","zhang")`.
+For real data, `topN = 400` and `permutations = 1000` are reasonable starting
+points; lower values are used here to keep the vignette fast.
+
+# Setting Up for Full CMap Data
+
+When working with the full CMap release, set global options once at the top of
+your script so that all CONCERTDR functions can resolve the file paths
+automatically:
+
+```{r set-options, eval=FALSE}
+data_dir <- "/path/to/your/cmap_data"
+
+options(
+  CONCERTDR.data_dir          = data_dir,
+  CONCERTDR.gctx_file         = file.path(data_dir, "level5_beta_all_n1201944x12328.gctx"),
+  CONCERTDR.siginfo_file      = file.path(data_dir, "siginfo_beta.txt"),
+  CONCERTDR.geneinfo_file     = file.path(data_dir, "geneinfo_beta.txt"),
+  CONCERTDR.compoundinfo_file = file.path(data_dir, "compoundinfo_beta.txt")
+)
+
+# Verify paths before running
+stopifnot(file.exists(getOption("CONCERTDR.gctx_file")))
+stopifnot(file.exists(getOption("CONCERTDR.siginfo_file")))
+```
+
+CMap data files are available at <https://clue.io/releases/data-dashboard>
+after free registration.
+
+# Further Reading
+
+For detailed walkthroughs of each stage:
+
+- **Signature Matching** vignette — full workflow from `subset_siginfo_beta()`
+  through `process_signature_with_df()`.
+- **Result Annotation** vignette — integrating CMap compound metadata with
+  `annotate_drug_results()`.
+- **Visualization** vignette — directional barcode heatmaps with
+  `extract_signature_zscores()` and `plot_signature_direction_tile_barcode()`.
+
+# Session Info
+
+```{r session-info}
+sessionInfo()
+```

@@ -35,21 +35,46 @@ in subsequent parameters based on your current selection, helping you make
 informed decisions about the filtering sequence.
 }
 \examples{
-\dontrun{
-# Interactive mode with smart preview of downstream options
-filtered_siginfo <- subset_siginfo_beta("path/to/siginfo_beta.txt")
+ex_sig <- data.frame(
+  pert_type = c("trt_cp", "trt_cp", "trt_sh"),
+  pert_itime = c("6 h", "24 h", "24 h"),
+  pert_idose = c("10 uM", "10 uM", "5 uM"),
+  cell_iname = c("A375", "MCF7", "A375"),
+  stringsAsFactors = FALSE
+)
+ex_sig_file <- tempfile(fileext = ".txt")
+write.table(ex_sig, ex_sig_file, sep = "\t", row.names = FALSE, quote = FALSE)
+subset_siginfo_beta(
+  ex_sig_file,
+  interactive = FALSE,
+  filters = list(pert_type = "trt_cp"),
+  verbose = FALSE,
+  show_preview = FALSE
+)
+
+\donttest{
+ex_file <- system.file("extdata", "example_siginfo.txt", package = "CONCERTDR")
+
+# Interactive mode (run only in an interactive R session)
+if (interactive() && nzchar(ex_file)) {
+  filtered_siginfo <- subset_siginfo_beta(ex_file)
+}
 
 # Non-interactive mode with pre-defined filters
-filtered_siginfo <- subset_siginfo_beta(
-  "path/to/siginfo_beta.txt",
-  interactive = FALSE,
-  filters = list(
-    pert_type = "trt_cp",
-    pert_itime = c("6 h", "24 h"),
-    pert_idose = "10 uM",
-    cell_iname = c("A375", "MCF7")
+if (nzchar(ex_file)) {
+  filtered_siginfo <- subset_siginfo_beta(
+    ex_file,
+    interactive = FALSE,
+    filters = list(
+      pert_type = "trt_cp",
+      pert_itime = c("6 h", "24 h"),
+      pert_idose = "10 uM",
+      cell_iname = c("A375", "MCF7")
+    ),
+    verbose = FALSE,
+    show_preview = FALSE
   )
-)
+}
 }
 
 }

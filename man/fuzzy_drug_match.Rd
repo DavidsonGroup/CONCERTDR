@@ -31,12 +31,17 @@ Performs fuzzy string matching to find the best matches between query drug names
 and a reference list of drug names. Uses Levenshtein distance for similarity calculation.
 }
 \examples{
-\dontrun{
-query <- c("aspirin", "ibuprofen", "acetaminophen")
-reference <- c("aspirin", "ibuprofen", "acetaminophen", "naproxen", "diclofenac")
+if (requireNamespace("RecordLinkage", quietly = TRUE)) {
+  fuzzy_drug_match(c("asprin"), c("aspirin", "ibuprofen"), threshold = 70)
+}
 
-matches <- fuzzy_drug_match(query, reference, threshold = 80)
-print(matches)
+\donttest{
+if (requireNamespace("RecordLinkage", quietly = TRUE)) {
+  query <- c("aspirin", "ibuprofen", "acetaminophen")
+  reference <- c("aspirin", "ibuprofen", "acetaminophen", "naproxen", "diclofenac")
+  matches <- fuzzy_drug_match(query, reference, threshold = 80)
+  print(matches)
+}
 }
 
 }

@@ -10,6 +10,9 @@
 #' @param results_df Data frame containing at least perturbation id and score
 #'   columns.
 #' @param signature_file Path to signature file with gene and log2FC columns.
+#' @param reference_df Optional reference matrix with genes as rows and
+#'   perturbation ids as columns. If supplied, z-scores are taken directly from
+#'   this object and no GCTX file is required.
 #' @param gctx_file Optional path to GCTX expression file.
 #' @param geneinfo_file Optional path to geneinfo file.
 #' @param siginfo_file Optional path to siginfo file for readable labels.
@@ -33,9 +36,30 @@
 #'     \item{\code{sig_ids}}{Character vector of selected \code{sig_id}s.}
 #'     \item{\code{sig_labels}}{Character vector of human-readable labels.}
 #'   }
+#'
+#' @examples
+#' is.function(extract_signature_zscores)
+#'
+#' \donttest{
+#' # Requires the full CMap GCTX file (downloaded from clue.io)
+#' sig_file <- system.file("extdata", "example_signature.txt",
+#'                         package = "CONCERTDR")
+#' ref_file <- system.file("extdata", "example_reference_df.csv",
+#'                         package = "CONCERTDR")
+#' ref_df <- read.csv(ref_file, row.names = 1, check.names = FALSE)
+#' ref_df$gene_symbol <- rownames(ref_df)
+#' zmat <- extract_signature_zscores(
+#'   results_df     = data.frame(sig_id = "DEMO001", Score = -0.72),
+#'   signature_file = sig_file,
+#'   reference_df   = ref_df,
+#'   pert_id_col    = "sig_id"
+#' )
+#' }
+#'
 #' @export
 extract_signature_zscores <- function(results_df,
                                       signature_file,
+                                      reference_df       = NULL,
                                       gctx_file         = NULL,
                                       geneinfo_file     = NULL,
                                       siginfo_file      = NULL,
@@ -61,35 +85,74 @@ extract_signature_zscores <- function(results_df,
     if (length(ok) == 0) return(NULL)
     ok[1]
   }
-  
-  gctx_default_name <- "level5_beta_all_n1201944x12328.gctx"
-  example_gctx      <- system.file("extdata", "example_data.gctx", package = "CONCERTDR")
-  
-  gctx_file <- first_existing(c(
-    gctx_file,
-    getOption("CONCERTDR.gctx_file", NULL),
-    Sys.getenv("CONCERTDR_GCTX_FILE", unset = ""),
-    if (!is.null(data_dir) && nzchar(data_dir)) file.path(data_dir, gctx_default_name) else NULL,
-    gctx_default_name,
-    if (nzchar(example_gctx)) example_gctx else NULL
-  ))
-  if (is.null(gctx_file)) {
-    stop("Could not resolve gctx_file. Provide gctx_file explicitly, or set ",
-         "options(CONCERTDR.gctx_file='...') or data_dir containing ", gctx_default_name)
+
+  use_reference_df <- !is.null(reference_df)
+
+  if (use_reference_df) {
+    if (is.data.frame(reference_df)) {
+      if ("gene_symbol" %in% names(reference_df)) {
+        reference_df$gene_symbol <- toupper(as.character(reference_df$gene_symbol))
+        rownames(reference_df) <- reference_df$gene_symbol
+        reference_df$gene_symbol <- NULL
+      }
+      reference_mat <- as.matrix(reference_df)
+    } else if (is.matrix(reference_df)) {
+      reference_mat <- reference_df
+    } else {
+      stop("reference_df must be a data.frame or matrix")
+    }
+
+    if (is.null(rownames(reference_mat)) || is.null(colnames(reference_mat))) {
+      stop("reference_df must have gene identifiers as row names and perturbation ids as column names")
+    }
+
+    rownames(reference_mat) <- toupper(as.character(rownames(reference_mat)))
+    reference_mat <- apply(reference_mat, 2, as.numeric)
+    rownames(reference_mat) <- toupper(as.character(rownames(reference_df)))
+    colnames(reference_mat) <- colnames(reference_df)
   }
-  
-  inferred_data_dir <- if (!is.null(data_dir) && nzchar(data_dir)) data_dir else dirname(gctx_file)
-  
-  geneinfo_file <- first_existing(c(
-    geneinfo_file,
-    getOption("CONCERTDR.geneinfo_file", NULL),
-    Sys.getenv("CONCERTDR_GENEINFO_FILE", unset = ""),
-    if (!is.null(inferred_data_dir) && nzchar(inferred_data_dir)) file.path(inferred_data_dir, "geneinfo_beta.txt") else NULL,
-    "geneinfo_beta.txt"
-  ))
-  if (is.null(geneinfo_file)) {
-    stop("Could not resolve geneinfo_file. Provide geneinfo_file explicitly, or set ",
-         "options(CONCERTDR.geneinfo_file='...') or data_dir containing geneinfo_beta.txt")
+
+  gctx_default_name <- "level5_beta_all_n1201944x12328.gctx"
+
+  gctx_file <- if (!use_reference_df) {
+    first_existing(c(
+      gctx_file,
+      getOption("CONCERTDR.gctx_file", NULL),
+      Sys.getenv("CONCERTDR_GCTX_FILE", unset = ""),
+      if (!is.null(data_dir) && nzchar(data_dir)) file.path(data_dir, gctx_default_name) else NULL,
+      gctx_default_name
+    ))
+  } else {
+    first_existing(c(
+      gctx_file,
+      getOption("CONCERTDR.gctx_file", NULL),
+      Sys.getenv("CONCERTDR_GCTX_FILE", unset = "")
+    ))
+  }
+
+  if (is.null(gctx_file) && !use_reference_df) {
+    stop("Could not resolve gctx_file. Provide gctx_file explicitly, set options(CONCERTDR.gctx_file='...'), or supply reference_df")
+  }
+
+  inferred_data_dir <- if (!is.null(gctx_file)) {
+    if (!is.null(data_dir) && nzchar(data_dir)) data_dir else dirname(gctx_file)
+  } else {
+    data_dir
+  }
+
+  gene_map <- NULL
+  if (!use_reference_df) {
+    geneinfo_file <- first_existing(c(
+      geneinfo_file,
+      getOption("CONCERTDR.geneinfo_file", NULL),
+      Sys.getenv("CONCERTDR_GENEINFO_FILE", unset = ""),
+      if (!is.null(inferred_data_dir) && nzchar(inferred_data_dir)) file.path(inferred_data_dir, "geneinfo_beta.txt") else NULL,
+      "geneinfo_beta.txt"
+    ))
+    if (is.null(geneinfo_file)) {
+      stop("Could not resolve geneinfo_file. Provide geneinfo_file explicitly, or set ",
+           "options(CONCERTDR.geneinfo_file='...') or data_dir containing geneinfo_beta.txt")
+    }
   }
   
   siginfo_file <- first_existing(c(
@@ -101,28 +164,34 @@ extract_signature_zscores <- function(results_df,
   ))
   
   if (verbose) {
-    message("Using files:")
-    message(" - gctx_file: ", gctx_file)
-    message(" - geneinfo_file: ", geneinfo_file)
+    if (use_reference_df) {
+      message("Using in-memory reference_df with ", nrow(reference_mat),
+              " genes and ", ncol(reference_mat), " perturbations")
+    } else {
+      message("Using files:")
+      message(" - gctx_file: ", gctx_file)
+      message(" - geneinfo_file: ", geneinfo_file)
+    }
     if (!is.null(siginfo_file)) message(" - siginfo_file: ", siginfo_file)
   }
-  
-  # gene symbol -> gene id
-  geneinfo <- if (requireNamespace("data.table", quietly = TRUE)) {
-    data.table::fread(geneinfo_file, data.table = FALSE)
-  } else {
-    utils::read.table(geneinfo_file, sep = "\t", header = TRUE, stringsAsFactors = FALSE,
-                      quote = "", comment.char = "", fill = TRUE)
+
+  if (!use_reference_df) {
+    geneinfo <- if (requireNamespace("data.table", quietly = TRUE)) {
+      data.table::fread(geneinfo_file, data.table = FALSE)
+    } else {
+      utils::read.table(geneinfo_file, sep = "\t", header = TRUE, stringsAsFactors = FALSE,
+                        quote = "", comment.char = "", fill = TRUE)
+    }
+    names(geneinfo) <- trimws(names(geneinfo))
+    if (!all(c("gene_symbol", "gene_id") %in% names(geneinfo))) {
+      stop("geneinfo_file must contain columns: gene_symbol, gene_id")
+    }
+    geneinfo$gene_symbol <- toupper(as.character(geneinfo$gene_symbol))
+    geneinfo <- geneinfo[!is.na(geneinfo$gene_symbol) & !is.na(geneinfo$gene_id), c("gene_symbol", "gene_id")]
+    gene_map <- as.character(geneinfo$gene_id)
+    names(gene_map) <- geneinfo$gene_symbol
   }
-  names(geneinfo) <- trimws(names(geneinfo))
-  if (!all(c("gene_symbol", "gene_id") %in% names(geneinfo))) {
-    stop("geneinfo_file must contain columns: gene_symbol, gene_id")
-  }
-  geneinfo$gene_symbol <- toupper(as.character(geneinfo$gene_symbol))
-  geneinfo <- geneinfo[!is.na(geneinfo$gene_symbol) & !is.na(geneinfo$gene_id), c("gene_symbol", "gene_id")]
-  gene_map <- as.character(geneinfo$gene_id)
-  names(gene_map) <- geneinfo$gene_symbol
-  
+
   # signature genes and order (down then up)
   sig <- if (requireNamespace("data.table", quietly = TRUE)) {
     data.table::fread(signature_file, data.table = FALSE)
@@ -137,9 +206,14 @@ extract_signature_zscores <- function(results_df,
   sig[[log2fc_col]] <- suppressWarnings(as.numeric(sig[[log2fc_col]]))
   sig <- sig[!is.na(sig[[gene_col]]) & nzchar(sig[[gene_col]]) & !is.na(sig[[log2fc_col]]), , drop = FALSE]
   if (!is.null(max_genes)) sig <- utils::head(sig, max_genes)
-  sig <- sig[sig[[gene_col]] %in% names(gene_map), , drop = FALSE]
-  if (nrow(sig) == 0) stop("No signature genes mapped to geneinfo gene_id")
-  
+  if (use_reference_df) {
+    sig <- sig[sig[[gene_col]] %in% rownames(reference_mat), , drop = FALSE]
+    if (nrow(sig) == 0) stop("No signature genes matched the row names of reference_df")
+  } else {
+    sig <- sig[sig[[gene_col]] %in% names(gene_map), , drop = FALSE]
+    if (nrow(sig) == 0) stop("No signature genes mapped to geneinfo gene_id")
+  }
+
   down <- sig[sig[[log2fc_col]] < 0, , drop = FALSE]
   down <- down[order(down[[log2fc_col]], decreasing = FALSE), , drop = FALSE]
   up   <- sig[sig[[log2fc_col]] > 0, , drop = FALSE]
@@ -148,7 +222,7 @@ extract_signature_zscores <- function(results_df,
   ordered_genes <- c(as.character(down[[gene_col]]), as.character(up[[gene_col]]))
   ordered_genes <- ordered_genes[nzchar(ordered_genes)]
   if (length(ordered_genes) == 0) stop("No ordered genes available after down/up split")
-  ordered_ids <- unname(gene_map[ordered_genes])
+  ordered_ids <- if (use_reference_df) ordered_genes else unname(gene_map[ordered_genes])
   logfc_map   <- sig[[log2fc_col]]
   names(logfc_map) <- sig[[gene_col]]
   
@@ -170,10 +244,13 @@ extract_signature_zscores <- function(results_df,
   }
   
   tech    <- tech[order(tech[[score_col]], decreasing = FALSE), , drop = FALSE]
-  tech    <- head(tech, max_perts)
+  tech    <- utils::head(tech, max_perts)
   sig_ids <- as.character(tech[[pert_id_col]])
   sig_ids <- sig_ids[!is.na(sig_ids) & nzchar(sig_ids)]
   sig_ids <- unique(sig_ids)
+  if (use_reference_df) {
+    sig_ids <- intersect(sig_ids, colnames(reference_mat))
+  }
   if (length(sig_ids) == 0) stop("No perturbation ids selected")
   if (verbose) message("Perturbations selected: ", length(sig_ids))
   
@@ -208,11 +285,15 @@ extract_signature_zscores <- function(results_df,
       sig_labels <- vapply(sig_ids, make_label, character(1))
     }
   }
-  
-  # read z-scores from GCTX
-  z_mat <- fast_parse_gctx(fname = gctx_file, rid = as.character(ordered_ids), cid = sig_ids)
-  z_mat <- z_mat[as.character(ordered_ids), sig_ids, drop = FALSE]
-  rownames(z_mat) <- ordered_genes
+
+  if (use_reference_df) {
+    z_mat <- reference_mat[ordered_ids, sig_ids, drop = FALSE]
+    rownames(z_mat) <- ordered_genes
+  } else {
+    z_mat <- fast_parse_gctx(fname = gctx_file, rid = as.character(ordered_ids), cid = sig_ids)
+    z_mat <- z_mat[as.character(ordered_ids), sig_ids, drop = FALSE]
+    rownames(z_mat) <- ordered_genes
+  }
   z_plot          <- t(z_mat)          # rows = perturbations, cols = genes
   rownames(z_plot) <- sig_labels
   
@@ -247,6 +328,9 @@ extract_signature_zscores <- function(results_df,
 #' @param results_df Data frame (typically \code{tech_view_all}) containing at
 #'   least perturbation id and score columns.
 #' @param signature_file Path to signature file with gene and log2FC columns.
+#' @param reference_df Optional reference matrix with genes as rows and
+#'   perturbation ids as columns. If supplied, no GCTX file is needed and the
+#'   heatmap is built directly from this matrix.
 #' @param gctx_file Optional path to GCTX expression file. If NULL, the function
 #'   tries (in order): option \code{CONCERTDR.gctx_file}, env var
 #'   \code{CONCERTDR_GCTX_FILE}, \code{data_dir/level5_beta_all_n1201944x12328.gctx},
@@ -287,9 +371,10 @@ extract_signature_zscores <- function(results_df,
 #'   If provided, skips all data-loading and GCTX-extraction steps — all
 #'   data-related arguments (\code{results_df}, \code{signature_file},
 #'   \code{gctx_file}, etc.) are ignored.
-#' @param save_png Logical; save PNG output.
+#' @param save_png Logical; save PNG output (default: FALSE).
 #' @param output_png Output PNG path.
 #' @param output_zscores Optional TSV path for exported z-score matrix.
+#'   Default is \code{NULL}, so no file is written unless explicitly requested.
 #' @param width,height Figure dimensions in inches for PNG. If \code{NULL}
 #'   (default), dimensions are computed automatically from the number of genes
 #'   and perturbations (~0.22 in/gene width, ~0.28 in/perturbation height).
@@ -298,9 +383,30 @@ extract_signature_zscores <- function(results_df,
 #'
 #' @return Invisibly returns a list containing the plotted matrix,
 #' selected perturbation ids, and file paths.
+#'
+#' @examples
+#' is.function(plot_signature_direction_tile_barcode)
+#'
+#' \donttest{
+#' if (requireNamespace("ComplexHeatmap", quietly = TRUE) &&
+#'     requireNamespace("circlize", quietly = TRUE)) {
+#'   sig_file <- system.file("extdata", "example_signature.txt",
+#'                           package = "CONCERTDR")
+#'   plot_signature_direction_tile_barcode(
+#'     results_df    = data.frame(sig_id = "DEMO001", Score = -0.72),
+#'     signature_file = sig_file,
+#'     reference_df  = read.csv(system.file("extdata", "example_reference_df.csv",
+#'                                          package = "CONCERTDR"),
+#'                              row.names = 1, check.names = FALSE),
+#'     pert_id_col   = "sig_id"
+#'   )
+#' }
+#' }
+#'
 #' @export
 plot_signature_direction_tile_barcode <- function(results_df = NULL,
                                                   signature_file = NULL,
+                                                  reference_df = NULL,
                                                   gctx_file = NULL,
                                                   geneinfo_file = NULL,
                                                   siginfo_file = NULL,
@@ -320,7 +426,7 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
                                                   precomputed         = NULL,
                                                   save_png = FALSE,
                                                   output_png = "barcode_heatmap.png",
-                                                  output_zscores = "barcode_heatmap_zscores.tsv",
+                                                  output_zscores = NULL,
                                                   width = NULL,
                                                   height = NULL,
                                                   dpi = 150,
@@ -343,6 +449,7 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
     extracted <- extract_signature_zscores(
       results_df        = results_df,
       signature_file    = signature_file,
+      reference_df      = reference_df,
       gctx_file         = gctx_file,
       geneinfo_file     = geneinfo_file,
       siginfo_file      = siginfo_file,
@@ -370,7 +477,6 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
   if (!requireNamespace("ComplexHeatmap", quietly = TRUE)) {
     stop(
       "Package 'ComplexHeatmap' is required. Install with:\n",
-      "  if (!require('BiocManager', quietly = TRUE)) install.packages('BiocManager')\n",
       "  BiocManager::install('ComplexHeatmap')"
     )
   }

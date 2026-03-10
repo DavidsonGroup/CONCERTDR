@@ -1,14 +1,14 @@
 .onLoad <- function(libname, pkgname) {
   # Check if necessary packages are available
-  required_packages <- c("BiocManager", "data.table", "rhdf5")
+  required_packages <- c("data.table", "cmapR")
   missing_packages <- required_packages[
     !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
   ]
-  
+
   if (length(missing_packages) > 0) {
-    missing_bioc <- intersect(missing_packages, c("rhdf5"))
-    missing_cran <- setdiff(missing_packages, missing_bioc)
-    
+    missing_bioc <- intersect(missing_packages, "cmapR")
+    missing_cran <- setdiff(missing_packages, "cmapR")
+
     warning_msg <- "CONCERTDR depends on the following packages that are not installed: "
     
     if (length(missing_cran) > 0) {
@@ -21,8 +21,8 @@
     if (length(missing_bioc) > 0) {
       warning_msg <- paste0(warning_msg,
                             "\n  From Bioconductor: ", paste(missing_bioc, collapse = ", "),
-                            ". Install using: BiocManager::install(c('",
-                            paste(missing_bioc, collapse = "', '"), "'))")
+                            ". Install using BiocManager::install(c('",
+                            paste(missing_bioc, collapse = "', '"), "')) after installing BiocManager if needed")
     }
     
     warning(warning_msg)

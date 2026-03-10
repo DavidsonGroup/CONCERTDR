@@ -70,18 +70,51 @@ Integrate signature matching results with annotations from
 three analysis-ready tables and one drug context summary table.
 }
 \examples{
-\dontrun{
-results <- read.csv("sig_match_xsum_results.csv")
-
-views <- annotate_drug_results(
-  results_df = results,
-  sig_info_file = "siginfo_beta.txt",
-  comp_info_file = "compoundinfo_beta.txt",
-  output_dir = "results",
-  write_outputs = TRUE
+ex_results <- data.frame(
+  compound = "CVD001_HEPG2_6H:BRD-K03652504-001-01-9:10.0497",
+  Score = -0.72,
+  pValue = 0.002,
+  pAdjValue = 0.02,
+  stringsAsFactors = FALSE
 )
+ex_siginfo <- data.frame(
+  sig_id = ex_results$compound,
+  pert_type = "trt_cp",
+  pert_id = "BRD-K03652504-001-01-9",
+  pert_iname = "imatinib",
+  stringsAsFactors = FALSE
+)
+ex_compinfo <- data.frame(
+  pert_id = "BRD-K03652504-001-01-9",
+  pert_name = "imatinib",
+  cmap_name = "imatinib",
+  stringsAsFactors = FALSE
+)
+views <- annotate_drug_results(
+  results_df = ex_results,
+  sig_info_file = ex_siginfo,
+  comp_info_file = ex_compinfo,
+  write_outputs = FALSE,
+  verbose = FALSE
+)
+names(views)
 
-head(views$wetlab_drug_view)
+\donttest{
+if (file.exists("sig_match_xsum_results.csv") &&
+    file.exists("siginfo_beta.txt") &&
+    file.exists("compoundinfo_beta.txt")) {
+  results <- read.csv("sig_match_xsum_results.csv")
+
+  views <- annotate_drug_results(
+    results_df = results,
+    sig_info_file = "siginfo_beta.txt",
+    comp_info_file = "compoundinfo_beta.txt",
+    output_dir = "results",
+    write_outputs = TRUE
+  )
+
+  head(views$wetlab_drug_view)
+}
 }
 
 }

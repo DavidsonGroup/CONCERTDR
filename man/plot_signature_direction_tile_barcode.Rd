@@ -7,6 +7,7 @@
 plot_signature_direction_tile_barcode(
   results_df = NULL,
   signature_file = NULL,
+  reference_df = NULL,
   gctx_file = NULL,
   geneinfo_file = NULL,
   siginfo_file = NULL,
@@ -26,7 +27,7 @@ plot_signature_direction_tile_barcode(
   precomputed = NULL,
   save_png = FALSE,
   output_png = "barcode_heatmap.png",
-  output_zscores = "barcode_heatmap_zscores.tsv",
+  output_zscores = NULL,
   width = NULL,
   height = NULL,
   dpi = 150,
@@ -38,6 +39,10 @@ plot_signature_direction_tile_barcode(
 least perturbation id and score columns.}
 
 \item{signature_file}{Path to signature file with gene and log2FC columns.}
+
+\item{reference_df}{Optional reference matrix with genes as rows and
+perturbation ids as columns. If supplied, no GCTX file is needed and the
+heatmap is built directly from this matrix.}
 
 \item{gctx_file}{Optional path to GCTX expression file. If NULL, the function
 tries (in order): option \code{CONCERTDR.gctx_file}, env var
@@ -96,11 +101,12 @@ If provided, skips all data-loading and GCTX-extraction steps — all
 data-related arguments (\code{results_df}, \code{signature_file},
 \code{gctx_file}, etc.) are ignored.}
 
-\item{save_png}{Logical; save PNG output.}
+\item{save_png}{Logical; save PNG output (default: FALSE).}
 
 \item{output_png}{Output PNG path.}
 
-\item{output_zscores}{Optional TSV path for exported z-score matrix.}
+\item{output_zscores}{Optional TSV path for exported z-score matrix.
+Default is \code{NULL}, so no file is written unless explicitly requested.}
 
 \item{width, height}{Figure dimensions in inches for PNG. If \code{NULL}
 (default), dimensions are computed automatically from the number of genes
@@ -119,4 +125,24 @@ Build a 2D barcode heatmap using z-scores extracted from a GCTX file.
 Genes are ordered by signature direction (down then up), and perturbations
 are chosen as top \code{max_perts} rows by best (lowest) \code{score_col}
 from the provided technical results table.
+}
+\examples{
+is.function(plot_signature_direction_tile_barcode)
+
+\donttest{
+if (requireNamespace("ComplexHeatmap", quietly = TRUE) &&
+    requireNamespace("circlize", quietly = TRUE)) {
+  sig_file <- system.file("extdata", "example_signature.txt",
+                          package = "CONCERTDR")
+  plot_signature_direction_tile_barcode(
+    results_df    = data.frame(sig_id = "DEMO001", Score = -0.72),
+    signature_file = sig_file,
+    reference_df  = read.csv(system.file("extdata", "example_reference_df.csv",
+                                         package = "CONCERTDR"),
+                             row.names = 1, check.names = FALSE),
+    pert_id_col   = "sig_id"
+  )
+}
+}
+
 }

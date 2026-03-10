@@ -2,6 +2,7 @@
 #'
 #' @description Functions to extract expression data from CMap GCTX files based on
 #' specified combinations of time points, dosages, and cell lines.
+#' @return None; this is an internal documentation topic.
 #'
 #' @name cmap_extract
 #' @keywords internal
@@ -41,18 +42,18 @@ process_combination <- function(combination, rid, genenames, sig_info,
   itime <- combination$itime
   idose <- combination$idose
   cell <- combination$cell
-  
+
   message(sprintf("Processing: time=%s, dose=%s, cell=%s", itime, idose, cell))
-  
+
   # Filter data
   filtered_df <- sig_info[
     sig_info$pert_itime == itime &
       sig_info$pert_idose == idose &
       sig_info$cell_iname == cell,
   ]
-  
+
   cid <- filtered_df$sig_id
-  
+
   # Create filename with underscores instead of spaces
   filename <- paste0(
     "filtered_",
@@ -60,27 +61,30 @@ process_combination <- function(combination, rid, genenames, sig_info,
     gsub(" ", "_", idose), "_",
     gsub(" ", "_", cell), ".csv"
   )
-  
+
   # Full path to output file
   output_file <- file.path(output_dir, filename)
-  
+
   if (length(cid) > 0) {
-    # Parse the gctx file
-    mat <- fast_parse_gctx(
+    # Parse the gctx file using CmapR
+    pert_data <- cmapR::parse_gctx(
       fname = gctx_file,
       cid = cid,
       rid = rid
     )
-    
+
+    # Get the data matrix
+    mat <- cmapR::mat(pert_data)
+
     message(sprintf("Data dimensions: %d x %d", nrow(mat), ncol(mat)))
-    
+
     if (nrow(mat) > 0) {
       # Convert to data frame and set row names as gene names
       df <- as.data.frame(mat)
       rownames(df) <- genenames
-      
+
       # Write to file
-      utils::write.table(df, file = output_file, sep = "\t", quote = FALSE)
+      write.table(df, file = output_file, sep = "\t", quote = FALSE)
       message(sprintf("Successfully wrote data to %s", output_file))
     } else {
       message(sprintf("No data found for this combination"))
@@ -104,7 +108,7 @@ process_combination <- function(combination, rid, genenames, sig_info,
       sep = "\n"
     ), output_file)
   }
-  
+
   return(invisible(output_file))
 }
 
@@ -123,38 +127,38 @@ process_combinations_file <- function(combinations_file, task_id = NULL,
                                       siginfo_file = "siginfo_beta.txt",
                                       gctx_file = "level5_beta_trt_cp_n720216x12328.gctx",
                                       output_dir = ".") {
-  
+
   # Create output directory if it doesn't exist
   if (!dir.exists(output_dir)) {
     dir.create(output_dir, recursive = TRUE)
   }
-  
+
   # Check if combinations file exists
   if (!file.exists(combinations_file)) {
     stop("Combinations file not found: ", combinations_file)
   }
-  
+
   # Read combinations file
   combinations <- utils::read.table(combinations_file, header = TRUE, stringsAsFactors = FALSE)
   message(sprintf("Loaded %d combinations from %s", nrow(combinations), combinations_file))
-  
+
   # Read gene info file
   message("Reading gene info file...")
   geneinfo_df <- utils::read.table(geneinfo_file, sep = "\t", header = TRUE, stringsAsFactors = FALSE)
   result <- get_rid(geneinfo_df)
   rid <- result$rid
   genenames <- result$genenames
-  
+
   # Read siginfo file
   message("Reading signature info file...")
   sig_info <- utils::read.table(siginfo_file, sep = "\t", header = TRUE, stringsAsFactors = FALSE)
   sig_info <- sig_info[sig_info$pert_type == "trt_cp", ]
   sig_info <- sig_info[sig_info$is_hiq == 1, ]
-  
+
   # Determine execution mode
   # Check if we're running as part of a SLURM array job
   slurm_task_id <- Sys.getenv("SLURM_ARRAY_TASK_ID")
-  
+
   # Determine which task_id to use
   if (!is.null(task_id)) {
     # Command line argument takes precedence
@@ -169,16 +173,16 @@ process_combinations_file <- function(combinations_file, task_id = NULL,
     task_id <- NULL
     message("No task ID specified. Processing all combinations sequentially.")
   }
-  
+
   # Process combination(s)
   output_files <- character()
-  
+
   if (!is.null(task_id)) {
     # Process just one combination
     if (task_id < 1 || task_id > nrow(combinations)) {
       stop("Invalid task ID: ", task_id, ". Must be between 1 and ", nrow(combinations))
     }
-    
+
     output_file <- process_combination(combinations[task_id, ], rid, genenames, sig_info, gctx_file, output_dir)
     output_files <- c(output_files, output_file)
   } else {
@@ -189,6 +193,6 @@ process_combinations_file <- function(combinations_file, task_id = NULL,
       output_files <- c(output_files, output_file)
     }
   }
-  
+
   return(invisible(output_files))
 }

@@ -1,3 +1,6 @@
+# Suppress R CMD check notes for ggplot2 NSE column names
+utils::globalVariables(c("compound", "Score", "pValue"))
+
 #' Process drug response signatures against reference data in a dataframe
 #'
 #' @param signature_file Path to signature gene list with log2FC values
@@ -8,7 +11,7 @@
 #'        Options: "ks", "xcos", "xsum", "gsea0", "gsea1", "gsea2", "zhang"
 #' @param topN Integer; number of top-ranked genes to use for XCos and XSum methods (default: 4)
 #' @param read_method Character; method to use for reading signature file ("auto", "fread", or "read.table") (default: "auto")
-#' @param save_files Logical; whether to save results to files (default: TRUE)
+#' @param save_files Logical; whether to save results to files (default: FALSE)
 #'
 #' @return A structured list containing:
 #'   \item{results}{List containing results for each method}
@@ -18,19 +21,29 @@
 #'   \item{common_genes}{Counts of genes found in reference data}
 #'   Use print() or summary() methods to get a quick overview of results
 #'
+#' @examples
+#' sig_file <- system.file("extdata", "example_signature.txt",
+#'                         package = "CONCERTDR")
+#' ref_file <- system.file("extdata", "example_reference_df.csv",
+#'                         package = "CONCERTDR")
+#' ref_df <- read.csv(ref_file, row.names = 1, check.names = FALSE)
+#' ref_df$gene_symbol <- rownames(ref_df)
+#' results <- process_signature_with_df(
+#'   signature_file = sig_file,
+#'   reference_df = ref_df,
+#'   output_dir = tempdir(),
+#'   permutations = 10,
+#'   methods = "ks",
+#'   save_files = FALSE
+#' )
+#' summary(results, top_n = 3)
+#'
 #' @export
 process_signature_with_df <- function(signature_file, reference_df, output_dir = "results",
                                       permutations = 100, methods = c("ks", "xcos", "xsum", "gsea0",
                                                                       "gsea1", "gsea2", "zhang"),
-                                      topN = 4, read_method = "auto", save_files = TRUE) {
-  # Ensure RCSM is installed
-  if (!requireNamespace("RCSM", quietly = TRUE)) {
-    stop(
-      "Package 'RCSM' is required but not installed. ",
-      "Please install it manually, e.g. with remotes::install_github('Jasonlinchina/RCSM')."
-    )
-  }
-  
+                                      topN = 4, read_method = "auto", save_files = FALSE) {
+
   # Create output directory if it doesn't exist and files will be saved
   if (save_files && !dir.exists(output_dir)) {
     dir.create(output_dir, recursive = TRUE)
@@ -93,8 +106,8 @@ process_signature_with_df <- function(signature_file, reference_df, output_dir =
   ref_data <- reference_df
   rownames(ref_data) <- ref_data$gene_symbol
   ref_data$gene_symbol <- NULL
-  
-  # Convert to matrix format required by RCSM
+
+  # Convert to matrix format
   ref <- as.matrix(ref_data)
   
   # Verify genes exist in reference
@@ -131,43 +144,44 @@ process_signature_with_df <- function(signature_file, reference_df, output_dir =
   all_methods <- list(
     ks = function() {
       message("Running KS score...")
-      RCSM::KSScore(refMatrix = ref, queryUp = common_up, queryDown = common_down, permuteNum = permutations)
+      score_ks(refMatrix = ref, queryUp = common_up, queryDown = common_down,
+               permuteNum = permutations)
     },
     
     xcos = function() {
       message(sprintf("Running XCos score with topN = %d...", topN))
-      RCSM::XCosScore(refMatrix = ref, query = query[query_genes %in% rownames(ref)],
-                      topN = topN, permuteNum = permutations)
+      score_xcos(refMatrix = ref, query = query[query_genes %in% rownames(ref)],
+                 topN = topN, permuteNum = permutations)
     },
     
     xsum = function() {
       message(sprintf("Running XSum score with topN = %d...", topN))
-      RCSM::XSumScore(refMatrix = ref, queryUp = common_up, queryDown = common_down,
-                      topN = topN, permuteNum = permutations)
+      score_xsum(refMatrix = ref, queryUp = common_up, queryDown = common_down,
+                 topN = topN, permuteNum = permutations)
     },
     
     gsea0 = function() {
       message("Running GSEA weight 0 score...")
-      RCSM::GSEAweight0Score(refMatrix = ref, queryUp = common_up, queryDown = common_down,
-                             permuteNum = permutations)
+      score_gsea0(refMatrix = ref, queryUp = common_up, queryDown = common_down,
+                  permuteNum = permutations)
     },
     
     gsea1 = function() {
       message("Running GSEA weight 1 score...")
-      RCSM::GSEAweight1Score(refMatrix = ref, queryUp = common_up, queryDown = common_down,
-                             permuteNum = permutations)
+      score_gsea1(refMatrix = ref, queryUp = common_up, queryDown = common_down,
+                  permuteNum = permutations)
     },
     
     gsea2 = function() {
       message("Running GSEA weight 2 score...")
-      RCSM::GSEAweight2Score(refMatrix = ref, queryUp = common_up, queryDown = common_down,
-                             permuteNum = permutations)
+      score_gsea2(refMatrix = ref, queryUp = common_up, queryDown = common_down,
+                  permuteNum = permutations)
     },
     
     zhang = function() {
       message("Running Zhang score...")
-      RCSM::ZhangScore(refMatrix = ref, queryUp = common_up, queryDown = common_down,
-                       permuteNum = permutations)
+      score_zhang(refMatrix = ref, queryUp = common_up, queryDown = common_down,
+                  permuteNum = permutations)
     }
   )
   
@@ -324,6 +338,28 @@ create_summary_from_results <- function(results_list, top_n = 20) {
 #'
 #' @return x invisibly
 #'
+#' @examples
+#' mock_res <- structure(
+#'   list(
+#'     results = list(
+#'       ks = data.frame(compound = c("imatinib", "dasatinib"),
+#'                       Score = c(-0.72, -0.45), pValue = c(0.002, 0.041),
+#'                       pAdjValue = c(0.020, 0.205), stringsAsFactors = FALSE)
+#'     ),
+#'     summary = data.frame(compound = "imatinib", method = "ks",
+#'                          Score = -0.72, pValue = 0.002, global_rank = 1L,
+#'                          stringsAsFactors = FALSE),
+#'     gene_data    = data.frame(Gene = c("TP53", "MYC"),
+#'                               log2FC = c(1.5, -2.1), stringsAsFactors = FALSE),
+#'     settings     = list(signature_file = "ex.txt",
+#'                         time_completed = Sys.time(), time_taken_mins = 0.1,
+#'                         methods = "ks", permutations = 10),
+#'     common_genes = list(up   = list(found = "TP53", count = 1L, percent = 50),
+#'                         down = list(found = "MYC",  count = 1L, percent = 50))
+#'   ), class = "cmap_signature_result"
+#' )
+#' print(mock_res)
+#'
 #' @export
 print.cmap_signature_result <- function(x, ...) {
   cat("CMap Signature Matching Results\n")
@@ -360,7 +396,7 @@ print.cmap_signature_result <- function(x, ...) {
     top_compounds <- x$summary[order(x$summary$global_rank)[1:top_n], ]
     
     cat("\nTop compounds across all methods:\n")
-    for (i in 1:nrow(top_compounds)) {
+    for (i in seq_len(nrow(top_compounds))) {
       cat(sprintf("  %d. %s (method: %s, score: %.4f, p-value: %.4f)\n",
                   i, top_compounds$compound[i], top_compounds$method[i],
                   top_compounds$Score[i], top_compounds$pValue[i]))
@@ -386,6 +422,29 @@ print.cmap_signature_result <- function(x, ...) {
 #'
 #' @return A data frame with the top compounds
 #'
+#' @examples
+#' mock_res <- structure(
+#'   list(
+#'     results = list(
+#'       ks = data.frame(compound = c("imatinib", "dasatinib"),
+#'                       Score = c(-0.72, -0.45), pValue = c(0.002, 0.041),
+#'                       pAdjValue = c(0.020, 0.205), stringsAsFactors = FALSE)
+#'     ),
+#'     summary = data.frame(compound = c("imatinib", "dasatinib"),
+#'                          method = c("ks", "ks"),
+#'                          Score = c(-0.72, -0.45), pValue = c(0.002, 0.041),
+#'                          global_rank = 1:2, stringsAsFactors = FALSE),
+#'     gene_data    = data.frame(Gene = c("TP53", "MYC"),
+#'                               log2FC = c(1.5, -2.1), stringsAsFactors = FALSE),
+#'     settings     = list(signature_file = "ex.txt",
+#'                         time_completed = Sys.time(), time_taken_mins = 0.1,
+#'                         methods = "ks", permutations = 10),
+#'     common_genes = list(up   = list(found = "TP53", count = 1L, percent = 50),
+#'                         down = list(found = "MYC",  count = 1L, percent = 50))
+#'   ), class = "cmap_signature_result"
+#' )
+#' summary(mock_res, top_n = 2)
+#'
 #' @export
 summary.cmap_signature_result <- function(object, top_n = 10, ...) {
   if (nrow(object$summary) == 0) {
@@ -400,9 +459,10 @@ summary.cmap_signature_result <- function(object, top_n = 10, ...) {
   top_compounds <- utils::head(top_compounds, top_n)
   
   # Print a summary
-  cat("Top", top_n, "compounds across all methods:\n\n")
-  print(top_compounds[, c("compound", "method", "Score", "pValue", "global_rank")])
-  
+    summary_tbl <- top_compounds[, c("compound", "method", "Score", "pValue", "global_rank")]
+    message("Top ", top_n, " compounds across all methods:\n",
+      paste(utils::capture.output(summary_tbl), collapse = "\n"))
+
   # Return the data invisibly
   invisible(top_compounds)
 }
@@ -416,6 +476,32 @@ summary.cmap_signature_result <- function(object, top_n = 10, ...) {
 #' @param ... Additional arguments passed to plotting functions
 #'
 #' @return A ggplot object
+#'
+#' @examples
+#' mock_res <- structure(
+#'   list(
+#'     results = list(
+#'       ks = data.frame(compound = c("imatinib", "dasatinib", "doxorubicin"),
+#'                       Score = c(-0.72, -0.45, 0.31),
+#'                       pValue = c(0.002, 0.041, 0.280),
+#'                       pAdjValue = c(0.020, 0.205, 0.560),
+#'                       stringsAsFactors = FALSE)
+#'     ),
+#'     summary = data.frame(compound = "imatinib", method = "ks",
+#'                          Score = -0.72, pValue = 0.002, global_rank = 1L,
+#'                          stringsAsFactors = FALSE),
+#'     gene_data    = data.frame(Gene = c("TP53", "MYC"),
+#'                               log2FC = c(1.5, -2.1), stringsAsFactors = FALSE),
+#'     settings     = list(signature_file = "ex.txt",
+#'                         time_completed = Sys.time(), time_taken_mins = 0.1,
+#'                         methods = "ks", permutations = 10),
+#'     common_genes = list(up   = list(found = "TP53", count = 1L, percent = 50),
+#'                         down = list(found = "MYC",  count = 1L, percent = 50))
+#'   ), class = "cmap_signature_result"
+#' )
+#' if (requireNamespace("ggplot2", quietly = TRUE)) {
+#'   plot(mock_res, method = "ks", plot_type = "scores")
+#' }
 #'
 #' @export
 plot.cmap_signature_result <- function(x, method = NULL, plot_type = "scores", top_n = 20, ...) {
@@ -499,51 +585,11 @@ plot.cmap_signature_result <- function(x, method = NULL, plot_type = "scores", t
 #'        Options: "ks", "xcos", "xsum", "gsea0", "gsea1", "gsea2", "zhang"
 #' @param topN Integer; number of top-ranked genes to use for XCos and XSum methods (default: 4)
 #' @param permutations Number of permutations for statistical testing (default: 100)
+#' @param save_files Logical; whether to write per-method and summary result
+#'   files to \code{output_dir} (default: FALSE)
 #' @param keep_all_genes Logical; whether to keep all genes when extracting CMap data (default: TRUE)
 #' @param read_method Character; method to use for reading signature file ("auto", "fread", or "read.table") (default: "auto")
 #' @param verbose Logical; whether to print progress messages (default: TRUE)
 #'
 #' @return List containing results from all methods
-#' @export
-run_cmap_workflow <- function(config_file, signature_file,
-                              geneinfo_file = "geneinfo_beta.txt",
-                              siginfo_file = "siginfo_beta.txt",
-                              gctx_file = "level5_beta_trt_cp_n720216x12328.gctx",
-                              output_dir = "results",
-                              methods = c("ks", "xcos", "xsum", "gsea0", "gsea1", "gsea2", "zhang"),
-                              topN = 4,
-                              permutations = 100,
-                              keep_all_genes = TRUE,
-                              read_method = "auto",
-                              verbose = TRUE) {
-  
-  # Step 1: Extract CMap data based on config file
-  if (verbose) message("Step 1: Extracting CMap data based on configuration...")
-  reference_df <- extract_cmap_data_from_config(
-    config_file = config_file,
-    geneinfo_file = geneinfo_file,
-    siginfo_file = siginfo_file,
-    gctx_file = gctx_file,
-    keep_all_genes = keep_all_genes,
-    verbose = verbose
-  )
-  
-  if (nrow(reference_df) == 0) {
-    stop("No data extracted from CMap. Please check your configuration and input files.")
-  }
-  
-  # Step 2: Process signature against the extracted data
-  if (verbose) message("\nStep 2: Processing signature against reference data...")
-  results <- process_signature_with_df(
-    signature_file = signature_file,
-    reference_df = reference_df,
-    output_dir = output_dir,
-    permutations = permutations,
-    methods = methods,
-    topN = topN,
-    read_method = read_method
-  )
-  
-  if (verbose) message("\nWorkflow completed successfully!")
-  return(results)
-}
+#'
