@@ -389,17 +389,19 @@ extract_signature_zscores <- function(results_df,
 #' is.function(plot_signature_direction_tile_barcode)
 #'
 #' \donttest{
-#' # Requires the full CMap GCTX file (downloaded from clue.io)
-#' sig_file <- system.file("extdata", "example_signature.txt",
-#'                         package = "CONCERTDR")
-#' plot_signature_direction_tile_barcode(
-#'   results_df    = data.frame(sig_id = "DEMO001", Score = -0.72),
-#'   signature_file = sig_file,
-#'   reference_df  = read.csv(system.file("extdata", "example_reference_df.csv",
-#'                                        package = "CONCERTDR"),
-#'                            row.names = 1, check.names = FALSE),
-#'   pert_id_col   = "sig_id"
-#' )
+#' if (requireNamespace("ComplexHeatmap", quietly = TRUE) &&
+#'     requireNamespace("circlize", quietly = TRUE)) {
+#'   sig_file <- system.file("extdata", "example_signature.txt",
+#'                           package = "CONCERTDR")
+#'   plot_signature_direction_tile_barcode(
+#'     results_df    = data.frame(sig_id = "DEMO001", Score = -0.72),
+#'     signature_file = sig_file,
+#'     reference_df  = read.csv(system.file("extdata", "example_reference_df.csv",
+#'                                          package = "CONCERTDR"),
+#'                              row.names = 1, check.names = FALSE),
+#'     pert_id_col   = "sig_id"
+#'   )
+#' }
 #' }
 #'
 #' @export
