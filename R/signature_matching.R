@@ -461,7 +461,7 @@ summary.cmap_signature_result <- function(object, top_n = 10, ...) {
   # Print a summary
     summary_tbl <- top_compounds[, c("compound", "method", "Score", "pValue", "global_rank")]
     message("Top ", top_n, " compounds across all methods:\n",
-      paste(capture.output(summary_tbl), collapse = "\n"))
+      paste(utils::capture.output(summary_tbl), collapse = "\n"))
 
   # Return the data invisibly
   invisible(top_compounds)

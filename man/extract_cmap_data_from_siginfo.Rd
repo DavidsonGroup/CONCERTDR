@@ -44,7 +44,7 @@ found in the siginfo file without requiring a configuration file.
 \examples{
 is.function(extract_cmap_data_from_siginfo)
 
-\donttest{
+\dontrun{
 # Example 1: Use the original siginfo_beta.txt directly
 reference_df <- extract_cmap_data_from_siginfo(
   siginfo_file = "path/to/siginfo_beta.txt",
