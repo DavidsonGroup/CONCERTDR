@@ -119,9 +119,19 @@ annotate_drug_results <- function(results_df,
           df <- data.table::fread(file_or_df, sep = "\t", header = TRUE,
                                   data.table = FALSE, stringsAsFactors = FALSE)
         } else {
+          header_names <- names(data.table::fread(
+            file_or_df,
+            sep = "\t",
+            header = TRUE,
+            nrows = 0,
+            data.table = FALSE,
+            stringsAsFactors = FALSE,
+            showProgress = FALSE
+          ))
+          keep_cols <- intersect(select_cols, trimws(header_names))
           df <- data.table::fread(file_or_df, sep = "\t", header = TRUE,
                                   data.table = FALSE, stringsAsFactors = FALSE,
-                                  select = select_cols)
+                                  select = keep_cols)
         }
       } else {
         df <- utils::read.table(file_or_df, sep = "\t", header = TRUE,
@@ -139,7 +149,7 @@ annotate_drug_results <- function(results_df,
     names(df) <- trimws(names(df))
     df
   }
-
+  
   parse_compound_context <- function(df, col = "compound") {
     if (!col %in% names(df)) {
       stop("Missing column for compound parsing: ", col)
