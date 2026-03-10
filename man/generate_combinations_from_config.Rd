@@ -18,9 +18,14 @@ Data frame of combinations
 Generate combinations of time points, dosages, and cell lines from a configuration file
 }
 \examples{
-\dontrun{
+cfg <- create_cmap_config_template(dest_dir = tempdir(), overwrite = TRUE)
+comb <- generate_combinations_from_config(cfg, verbose = FALSE)
+head(comb)
+
+\donttest{
 # First create a configuration file
-extract_cmap_parameters("databases/siginfo_beta.txt")
+siginfo_file <- system.file("extdata", "example_siginfo.txt", package = "CONCERTDR")
+extract_cmap_parameters(siginfo_file, write_config = TRUE)
 
 # Then edit the config file to select desired parameters
 # Leave sections empty to use all options for that parameter

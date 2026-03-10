@@ -42,6 +42,8 @@ present in the provided siginfo file. This function processes all signatures
 found in the siginfo file without requiring a configuration file.
 }
 \examples{
+is.function(extract_cmap_data_from_siginfo)
+
 \donttest{
 # Example 1: Use the original siginfo_beta.txt directly
 reference_df <- extract_cmap_data_from_siginfo(

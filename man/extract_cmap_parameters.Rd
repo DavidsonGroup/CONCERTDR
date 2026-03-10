@@ -6,7 +6,7 @@
 \usage{
 extract_cmap_parameters(
   siginfo_file,
-  write_config = TRUE,
+  write_config = FALSE,
   config_dir = "conf",
   config_filename = "cmap_options.conf",
   filter_quality = TRUE,
@@ -16,7 +16,7 @@ extract_cmap_parameters(
 \arguments{
 \item{siginfo_file}{Path to siginfo_beta.txt file}
 
-\item{write_config}{Logical; whether to write the configuration file (default: TRUE)}
+\item{write_config}{Logical; whether to write the configuration file (default: FALSE)}
 
 \item{config_dir}{Directory to save the configuration file; if NULL uses "conf"}
 
@@ -27,17 +27,32 @@ extract_cmap_parameters(
 \item{verbose}{Logical; whether to print progress messages (default: TRUE)}
 }
 \value{
-A list with extracted parameters (times, doses, cells) and the config file path
+A list with extracted parameters (times, doses, cells) and, when
+  requested, the config file path.
 }
 \description{
 Analyzes the CMap siginfo_beta.txt file to extract all available
-experimental parameters (time points, dosages, cell lines) and saves them to
-a configuration file for use in the DR pipeline.
+experimental parameters (time points, dosages, cell lines). By default the
+parameters are returned in memory; optionally they can also be written to a
+configuration file for use in the DR pipeline.
 }
 \examples{
+ex_sig <- data.frame(
+  pert_itime = c("6 h", "24 h", "24 h"),
+  pert_idose = c("1 uM", "1 uM", "10 uM"),
+  cell_iname = c("A375", "A375", "MCF7"),
+  pert_type = c("trt_cp", "trt_cp", "trt_cp"),
+  is_hiq = c(1, 1, 1),
+  stringsAsFactors = FALSE
+)
+ex_sig_file <- tempfile(fileext = ".txt")
+write.table(ex_sig, ex_sig_file, sep = "\t", row.names = FALSE, quote = FALSE)
+params <- extract_cmap_parameters(ex_sig_file, write_config = FALSE, verbose = FALSE)
+names(params)
+
 \donttest{
 # Extract parameters and write config
-params <- extract_cmap_parameters("databases/siginfo_beta.txt")
+params <- extract_cmap_parameters("databases/siginfo_beta.txt", write_config = TRUE)
 }
 
 }

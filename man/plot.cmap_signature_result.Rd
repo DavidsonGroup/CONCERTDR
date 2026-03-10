@@ -24,8 +24,6 @@ A ggplot object
 Plot method for cmap_signature_result objects
 }
 \examples{
-\donttest{
-# Requires the ggplot2 package
 mock_res <- structure(
   list(
     results = list(
@@ -47,7 +45,8 @@ mock_res <- structure(
                         down = list(found = "MYC",  count = 1L, percent = 50))
   ), class = "cmap_signature_result"
 )
-plot(mock_res, method = "ks", plot_type = "scores")
+if (requireNamespace("ggplot2", quietly = TRUE)) {
+  plot(mock_res, method = "ks", plot_type = "scores")
 }
 
 }

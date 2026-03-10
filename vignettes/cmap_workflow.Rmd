@@ -76,12 +76,14 @@ ref_df[1:5, 1:5]
 
 In a real analysis, run `extract_cmap_parameters()` on the full
 `siginfo_beta.txt` to discover all available time points, doses, and cell
-lines, and to write a configuration file:
+lines. By default it returns the parameters in memory; set
+`write_config = TRUE` if you also want a configuration file:
 
 ```{r extract-params, eval=FALSE}
 # Requires the full siginfo_beta.txt downloaded from clue.io
 params <- extract_cmap_parameters(
   siginfo_file = "path/to/siginfo_beta.txt",
+  write_config = TRUE,
   config_dir   = "conf",
   verbose      = TRUE
 )
@@ -95,7 +97,6 @@ With the bundled example file we can demonstrate the same function:
 ```{r extract-params-example}
 params <- extract_cmap_parameters(
   siginfo_file = siginfo_ex,
-  config_dir   = tempdir(),
   verbose      = FALSE
 )
 cat("Example time points:", paste(params$times, collapse = ", "), "\n")

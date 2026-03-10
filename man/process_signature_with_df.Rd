@@ -12,7 +12,7 @@ process_signature_with_df(
   methods = c("ks", "xcos", "xsum", "gsea0", "gsea1", "gsea2", "zhang"),
   topN = 4,
   read_method = "auto",
-  save_files = TRUE
+  save_files = FALSE
 )
 }
 \arguments{
@@ -31,7 +31,7 @@ Options: "ks", "xcos", "xsum", "gsea0", "gsea1", "gsea2", "zhang"}
 
 \item{read_method}{Character; method to use for reading signature file ("auto", "fread", or "read.table") (default: "auto")}
 
-\item{save_files}{Logical; whether to save results to files (default: TRUE)}
+\item{save_files}{Logical; whether to save results to files (default: FALSE)}
 }
 \value{
 A structured list containing:
@@ -46,21 +46,20 @@ A structured list containing:
 Process drug response signatures against reference data in a dataframe
 }
 \examples{
-\donttest{
-# Requires: remotes::install_github("Jasonlinchina/RCSM")
 sig_file <- system.file("extdata", "example_signature.txt",
                         package = "CONCERTDR")
 ref_file <- system.file("extdata", "example_reference_df.csv",
                         package = "CONCERTDR")
-ref_df   <- read.csv(ref_file, row.names = 1, check.names = FALSE)
-results  <- process_signature_with_df(
+ref_df <- read.csv(ref_file, row.names = 1, check.names = FALSE)
+ref_df$gene_symbol <- rownames(ref_df)
+results <- process_signature_with_df(
   signature_file = sig_file,
-  reference_df   = ref_df,
-  output_dir     = tempdir(),
-  permutations   = 100,
-  methods        = c("ks", "xsum"),
-  save_files     = FALSE
+  reference_df = ref_df,
+  output_dir = tempdir(),
+  permutations = 10,
+  methods = "ks",
+  save_files = FALSE
 )
-}
+summary(results, top_n = 3)
 
 }

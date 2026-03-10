@@ -39,14 +39,6 @@ if (!requireNamespace("BiocManager", quietly = TRUE))
 BiocManager::install("CONCERTDR")
 ```
 
-RCSM (required for signature matching) must be installed from GitHub:
-
-```{r install-rcsm, eval=FALSE}
-if (!requireNamespace("remotes", quietly = TRUE))
-    install.packages("remotes")
-remotes::install_github("Jasonlinchina/RCSM")
-```
-
 ## Acquiring CMap Data
 
 Download the following files from [clue.io](https://clue.io/) after free
@@ -62,7 +54,9 @@ registration:
 ## Quick-start with Bundled Example Data
 
 The package ships with small example datasets so every function can be
-explored without downloading the full CMap files.
+explored without downloading the full CMap files. These bundled files support
+signature matching and summary generation; GCTX-dependent extraction and
+visualisation still require the external CMap resources.
 
 ```{r setup}
 library(CONCERTDR)

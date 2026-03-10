@@ -29,3 +29,11 @@ with example data. Users can run this to see how the package works
 in practice. It extracts a small subset of data from a GCTX file
 to create a realistic reference for signature matching.
 }
+\examples{
+is.function(demonstrate_workflow)
+
+\donttest{
+demonstrate_workflow(demo_dir = tempdir(), use_minimal = TRUE)
+}
+
+}

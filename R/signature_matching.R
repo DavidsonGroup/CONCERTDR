@@ -11,7 +11,7 @@ utils::globalVariables(c("compound", "Score", "pValue"))
 #'        Options: "ks", "xcos", "xsum", "gsea0", "gsea1", "gsea2", "zhang"
 #' @param topN Integer; number of top-ranked genes to use for XCos and XSum methods (default: 4)
 #' @param read_method Character; method to use for reading signature file ("auto", "fread", or "read.table") (default: "auto")
-#' @param save_files Logical; whether to save results to files (default: TRUE)
+#' @param save_files Logical; whether to save results to files (default: FALSE)
 #'
 #' @return A structured list containing:
 #'   \item{results}{List containing results for each method}
@@ -28,30 +28,21 @@ utils::globalVariables(c("compound", "Score", "pValue"))
 #'                         package = "CONCERTDR")
 #' ref_df <- read.csv(ref_file, row.names = 1, check.names = FALSE)
 #' ref_df$gene_symbol <- rownames(ref_df)
-#' if (requireNamespace("RCSM", quietly = TRUE)) {
-#'   results <- process_signature_with_df(
-#'     signature_file = sig_file,
-#'     reference_df = ref_df,
-#'     output_dir = tempdir(),
-#'     permutations = 10,
-#'     methods = "ks",
-#'     save_files = FALSE
-#'   )
-#'   summary(results, top_n = 3)
-#' }
+#' results <- process_signature_with_df(
+#'   signature_file = sig_file,
+#'   reference_df = ref_df,
+#'   output_dir = tempdir(),
+#'   permutations = 10,
+#'   methods = "ks",
+#'   save_files = FALSE
+#' )
+#' summary(results, top_n = 3)
 #'
 #' @export
 process_signature_with_df <- function(signature_file, reference_df, output_dir = "results",
                                       permutations = 100, methods = c("ks", "xcos", "xsum", "gsea0",
                                                                       "gsea1", "gsea2", "zhang"),
-                                      topN = 4, read_method = "auto", save_files = TRUE) {
-  # Ensure RCSM is installed
-  if (!requireNamespace("RCSM", quietly = TRUE)) {
-    stop(
-      "Package 'RCSM' is required but not installed. ",
-      "Please install it manually, e.g. with remotes::install_github('Jasonlinchina/RCSM')."
-    )
-  }
+                                      topN = 4, read_method = "auto", save_files = FALSE) {
 
   # Create output directory if it doesn't exist and files will be saved
   if (save_files && !dir.exists(output_dir)) {
@@ -116,7 +107,7 @@ process_signature_with_df <- function(signature_file, reference_df, output_dir =
   rownames(ref_data) <- ref_data$gene_symbol
   ref_data$gene_symbol <- NULL
 
-  # Convert to matrix format required by RCSM
+  # Convert to matrix format
   ref <- as.matrix(ref_data)
 
   # Verify genes exist in reference
@@ -149,47 +140,48 @@ process_signature_with_df <- function(signature_file, reference_df, output_dir =
     reference_genes = length(rownames(ref))
   )
 
-  # Available methods
+  # Available methods — all implemented internally
   all_methods <- list(
     ks = function() {
       message("Running KS score...")
-      RCSM::KSScore(refMatrix = ref, queryUp = common_up, queryDown = common_down, permuteNum = permutations)
+      score_ks(refMatrix = ref, queryUp = common_up, queryDown = common_down,
+               permuteNum = permutations)
     },
 
     xcos = function() {
       message(sprintf("Running XCos score with topN = %d...", topN))
-      RCSM::XCosScore(refMatrix = ref, query = query[query_genes %in% rownames(ref)],
-                      topN = topN, permuteNum = permutations)
+      score_xcos(refMatrix = ref, query = query[query_genes %in% rownames(ref)],
+                 topN = topN, permuteNum = permutations)
     },
 
     xsum = function() {
       message(sprintf("Running XSum score with topN = %d...", topN))
-      RCSM::XSumScore(refMatrix = ref, queryUp = common_up, queryDown = common_down,
-                      topN = topN, permuteNum = permutations)
+      score_xsum(refMatrix = ref, queryUp = common_up, queryDown = common_down,
+                 topN = topN, permuteNum = permutations)
     },
 
     gsea0 = function() {
       message("Running GSEA weight 0 score...")
-      RCSM::GSEAweight0Score(refMatrix = ref, queryUp = common_up, queryDown = common_down,
-                             permuteNum = permutations)
+      score_gsea0(refMatrix = ref, queryUp = common_up, queryDown = common_down,
+                  permuteNum = permutations)
     },
 
     gsea1 = function() {
       message("Running GSEA weight 1 score...")
-      RCSM::GSEAweight1Score(refMatrix = ref, queryUp = common_up, queryDown = common_down,
-                             permuteNum = permutations)
+      score_gsea1(refMatrix = ref, queryUp = common_up, queryDown = common_down,
+                  permuteNum = permutations)
     },
 
     gsea2 = function() {
       message("Running GSEA weight 2 score...")
-      RCSM::GSEAweight2Score(refMatrix = ref, queryUp = common_up, queryDown = common_down,
-                             permuteNum = permutations)
+      score_gsea2(refMatrix = ref, queryUp = common_up, queryDown = common_down,
+                  permuteNum = permutations)
     },
 
     zhang = function() {
       message("Running Zhang score...")
-      RCSM::ZhangScore(refMatrix = ref, queryUp = common_up, queryDown = common_down,
-                       permuteNum = permutations)
+      score_zhang(refMatrix = ref, queryUp = common_up, queryDown = common_down,
+                  permuteNum = permutations)
     }
   )
 
@@ -593,6 +585,8 @@ plot.cmap_signature_result <- function(x, method = NULL, plot_type = "scores", t
 #'        Options: "ks", "xcos", "xsum", "gsea0", "gsea1", "gsea2", "zhang"
 #' @param topN Integer; number of top-ranked genes to use for XCos and XSum methods (default: 4)
 #' @param permutations Number of permutations for statistical testing (default: 100)
+#' @param save_files Logical; whether to write per-method and summary result
+#'   files to \\code{output_dir} (default: FALSE)
 #' @param keep_all_genes Logical; whether to keep all genes when extracting CMap data (default: TRUE)
 #' @param read_method Character; method to use for reading signature file ("auto", "fread", or "read.table") (default: "auto")
 #' @param verbose Logical; whether to print progress messages (default: TRUE)
@@ -617,7 +611,8 @@ plot.cmap_signature_result <- function(x, method = NULL, plot_type = "scores", t
 #'   gctx_file      = "path/to/level5_beta_trt_cp_n720216x12328.gctx",
 #'   output_dir     = tempdir(),
 #'   methods        = c("ks", "xsum"),
-#'   permutations   = 100
+#'   permutations   = 100,
+#'   save_files     = FALSE
 #' )
 #' }
 #'
@@ -630,6 +625,7 @@ run_cmap_workflow <- function(config_file, signature_file,
                               methods = c("ks", "xcos", "xsum", "gsea0", "gsea1", "gsea2", "zhang"),
                               topN = 4,
                               permutations = 100,
+                              save_files = FALSE,
                               keep_all_genes = TRUE,
                               read_method = "auto",
                               verbose = TRUE) {
@@ -658,6 +654,7 @@ run_cmap_workflow <- function(config_file, signature_file,
     permutations = permutations,
     methods = methods,
     topN = topN,
+    save_files = save_files,
     read_method = read_method
   )
 

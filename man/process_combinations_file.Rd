@@ -32,3 +32,19 @@ List of processed files (invisibly)
 \description{
 Process Multiple Combinations of Time, Dose, and Cell Line
 }
+\examples{
+is.function(process_combinations_file)
+
+\donttest{
+# Requires the full CMap files downloaded from clue.io
+cfg <- create_cmap_config_template(dest_dir = tempdir(), overwrite = TRUE)
+process_combinations_file(
+  combinations_file = cfg,
+  gctx_file     = "path/to/level5_beta_trt_cp_n720216x12328.gctx",
+  geneinfo_file = "path/to/geneinfo_beta.txt",
+  siginfo_file  = "path/to/siginfo_beta.txt",
+  output_dir    = tempdir()
+)
+}
+
+}

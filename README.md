@@ -16,8 +16,8 @@ functions that need explicit paths, pass `getOption(...)`.
 ## Installation
 
 ```r
-install.packages("devtools")
-devtools::install_github("DavidsonGroup/CONCERT_DR")
+install.packages("remotes")
+remotes::install_github("DavidsonGroup/CONCERT_DR")
 ```
 
 Visualization dependencies:
@@ -80,30 +80,33 @@ use it for your own data files on disk.
 ```r
 library(CONCERTDR)
 
-options(
-  CONCERTDR.gctx_file         = system.file("extdata", "example_data.gctx",        package = "CONCERTDR"),
-  CONCERTDR.siginfo_file      = system.file("extdata", "example_siginfo.txt",       package = "CONCERTDR"),
-  CONCERTDR.geneinfo_file     = system.file("extdata", "example_geneinfo.txt",      package = "CONCERTDR"),
-  CONCERTDR.compoundinfo_file = NA_character_
-)
-
 sig_file <- system.file("extdata", "example_signature.txt",    package = "CONCERTDR")
 ref_csv  <- system.file("extdata", "example_reference_df.csv", package = "CONCERTDR")
 
-reference_df <- read.csv(ref_csv, check.names = FALSE)
+reference_df <- read.csv(ref_csv, row.names = 1, check.names = FALSE)
+reference_df$gene_symbol <- rownames(reference_df)
 
 res <- process_signature_with_df(
   reference_df   = reference_df,
   signature_file = sig_file,
-  output_dir     = tempdir(),
-  methods        = c("ks"),
-  topN           = 10,
-  permutations   = 1
+  methods        = c("ks","xsum"),
+  topN           = 4,
+  permutations   = 10,
+  save_files     = FALSE
 )
 
+summary(res)
+head(res$results$ks)
+```
+
+The bundled example data also support z-score extraction and plotting directly
+from `example_reference_df.csv`:
+
+```r
 z <- extract_signature_zscores(
   results_df     = res$results$ks,
   signature_file = sig_file,
+  reference_df   = reference_df,
   max_genes      = 20,
   max_perts      = 10
 )
@@ -114,6 +117,16 @@ plot_signature_direction_tile_barcode(
   cluster_cols = FALSE
 )
 ```
+
+If you have the original CMap files, you can still pass `gctx_file`,
+`geneinfo_file`, and `siginfo_file` to extract the heatmap matrix from GCTX
+instead of using the precomputed reference matrix.
+
+By default, the core analysis and plotting functions do not write files. The
+same is now true for `extract_cmap_parameters()`: files are only created when
+you explicitly request them, for example with `save_files = TRUE`,
+`write_outputs = TRUE`, `write_config = TRUE`, `output_zscores = ...`, or
+`save_png = TRUE`.
 
 ---
 
@@ -136,10 +149,10 @@ filtered_siginfo <- subset_siginfo_beta(
 )
 ```
 
-Use `interactive = TRUE` to select parameters interactively from a prompted menu.
+Use `interactive = TRUE` to select parameters interactively from the console.
 Filterable columns: `pert_type`, `pert_itime`, `pert_idose`, `cell_iname`.
 
-The purt_type parameters is defined by LINCS2020 as follows:
+The `pert_type` values are defined by LINCS2020 as follows:
 
 ![image](https://github.com/user-attachments/assets/02ef148d-736b-4c02-92b5-5fde0935db17)
 
@@ -179,7 +192,8 @@ results <- process_signature_with_df(
   output_dir     = "results",
   methods        = c("xsum", "xcos", "zhang", "gsea0", "gsea1", "gsea2", "ks"),
   topN           = 400,    # genes used by XCos/XSum
-  permutations   = 1       # increase for p-values
+  permutations   = 1,      # increase for p-values
+  save_files     = FALSE   # set TRUE only if you want CSV outputs written
 )
 
 print(results)            # brief overview
@@ -226,7 +240,7 @@ z <- extract_signature_zscores(
   signature_file = "signature.txt",
   max_genes      = 100,
   max_perts      = 60,
-  output_zscores = "results/zscores.tsv"   # NULL to skip
+  output_zscores = NULL                     # set a path if you want to save TSV
 )
 ```
 
@@ -247,7 +261,7 @@ plot_signature_direction_tile_barcode(
   cluster_rows        = TRUE,
   cluster_cols        = FALSE,   # keeps down → up gene order from signature
   show_row_dendrogram = TRUE,
-  save_png            = TRUE,
+  save_png            = TRUE,    # default is FALSE
   output_png          = "results/barcode_heatmap.png"
 )
 ```

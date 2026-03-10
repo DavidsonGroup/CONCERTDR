@@ -177,7 +177,7 @@ create_console_config <- function(siginfo_file,
 #'
 #' Creates a data frame of combinations based on the selections from the interactive config functions
 #'
-#' @param selections The list returned by create_interactive_config() or create_console_config()
+#' @param selections The list returned by create_console_config()
 #' @param verbose Logical; whether to print progress messages (default: TRUE)
 #'
 #' @return Data frame of combinations
@@ -201,7 +201,7 @@ create_console_config <- function(siginfo_file,
 generate_combinations_from_selections <- function(selections, verbose = TRUE) {
   # Check input
   if (is.null(selections)) {
-    stop("No selections provided. Run create_interactive_config() or create_console_config() first.")
+    stop("No selections provided. Run create_console_config() first.")
   }
 
   if (!is.list(selections) || is.null(selections$selected)) {

@@ -14,6 +14,7 @@ run_cmap_workflow(
   methods = c("ks", "xcos", "xsum", "gsea0", "gsea1", "gsea2", "zhang"),
   topN = 4,
   permutations = 100,
+  save_files = FALSE,
   keep_all_genes = TRUE,
   read_method = "auto",
   verbose = TRUE
@@ -39,6 +40,9 @@ Options: "ks", "xcos", "xsum", "gsea0", "gsea1", "gsea2", "zhang"}
 
 \item{permutations}{Number of permutations for statistical testing (default: 100)}
 
+\item{save_files}{Logical; whether to write per-method and summary result
+files to \\code{output_dir} (default: FALSE)}
+
 \item{keep_all_genes}{Logical; whether to keep all genes when extracting CMap data (default: TRUE)}
 
 \item{read_method}{Character; method to use for reading signature file ("auto", "fread", or "read.table") (default: "auto")}
@@ -52,6 +56,10 @@ List containing results from all methods
 Complete workflow from configuration to signature matching
 }
 \examples{
+# Lightweight runnable setup example:
+cfg_file <- create_cmap_config_template(dest_dir = tempdir(), overwrite = TRUE)
+file.exists(cfg_file)
+
 \donttest{
 # Requires the full CMap files downloaded from clue.io
 sig_file <- system.file("extdata", "example_signature.txt",
@@ -65,7 +73,8 @@ results  <- run_cmap_workflow(
   gctx_file      = "path/to/level5_beta_trt_cp_n720216x12328.gctx",
   output_dir     = tempdir(),
   methods        = c("ks", "xsum"),
-  permutations   = 100
+  permutations   = 100,
+  save_files     = FALSE
 )
 }
 

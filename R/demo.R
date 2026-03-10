@@ -149,7 +149,6 @@ demonstrate_workflow <- function(demo_dir = "CONCERTDR_demo",
 
   if (inherits(result, "error")) {
     message("Signature matching could not be completed: ", result$message)
-    message("Install dependency 'RCSM' first (for example via remotes::install_github('Jasonlinchina/RCSM')).")
   } else {
     message("Successfully ran signature matching with methods: ", paste(methods_to_use, collapse = ", "))
     message("Results saved to: ", file.path(results_dir))

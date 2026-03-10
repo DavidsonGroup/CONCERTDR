@@ -17,3 +17,9 @@ List with parsed configuration (all options and selected options)
 \description{
 Read a CMap configuration file
 }
+\examples{
+cfg_file <- create_cmap_config_template(dest_dir = tempdir(), overwrite = TRUE)
+cfg      <- read_cmap_config(cfg_file)
+names(cfg)
+
+}

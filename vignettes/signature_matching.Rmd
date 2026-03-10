@@ -59,8 +59,8 @@ ref_df[1:4, 1:4]
 
 ## Available Matching Methods
 
-CONCERTDR wraps the [RCSM](https://github.com/Jasonlinchina/RCSM) package
-and exposes these methods via the `methods` argument:
+CONCERTDR implements these connectivity scoring methods internally and exposes
+them via the `methods` argument:
 
 | Method | Argument | Description |
 |--------|----------|-------------|
@@ -74,11 +74,10 @@ and exposes these methods via the `methods` argument:
 
 ## Running Signature Matching
 
-`process_signature_with_df()` is the main function. It requires RCSM to be
-installed. With the bundled example data:
+`process_signature_with_df()` is the main function. With the bundled example
+data:
 
 ```{r match, eval=FALSE}
-# Requires: remotes::install_github("Jasonlinchina/RCSM")
 results <- process_signature_with_df(
   signature_file = sig_file,
   reference_df   = ref_df,

@@ -7,6 +7,7 @@
 extract_signature_zscores(
   results_df,
   signature_file,
+  reference_df = NULL,
   gctx_file = NULL,
   geneinfo_file = NULL,
   siginfo_file = NULL,
@@ -26,6 +27,10 @@ extract_signature_zscores(
 columns.}
 
 \item{signature_file}{Path to signature file with gene and log2FC columns.}
+
+\item{reference_df}{Optional reference matrix with genes as rows and
+perturbation ids as columns. If supplied, z-scores are taken directly from
+this object and no GCTX file is required.}
 
 \item{gctx_file}{Optional path to GCTX expression file.}
 
@@ -69,4 +74,24 @@ Performs all data-loading and GCTX-extraction steps needed for
 plot. The returned matrix can be inspected, filtered, exported, or passed
 directly to \code{plot_signature_direction_tile_barcode(precomputed = )}
 to avoid re-reading large files on repeated calls.
+}
+\examples{
+is.function(extract_signature_zscores)
+
+\donttest{
+# Requires the full CMap GCTX file (downloaded from clue.io)
+sig_file <- system.file("extdata", "example_signature.txt",
+                        package = "CONCERTDR")
+ref_file <- system.file("extdata", "example_reference_df.csv",
+                        package = "CONCERTDR")
+ref_df <- read.csv(ref_file, row.names = 1, check.names = FALSE)
+ref_df$gene_symbol <- rownames(ref_df)
+zmat <- extract_signature_zscores(
+  results_df     = data.frame(sig_id = "DEMO001", Score = -0.72),
+  signature_file = sig_file,
+  reference_df   = ref_df,
+  pert_id_col    = "sig_id"
+)
+}
+
 }

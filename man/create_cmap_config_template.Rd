@@ -23,3 +23,8 @@ Path to the template file (invisibly)
 \description{
 Create a template configuration file
 }
+\examples{
+cfg <- create_cmap_config_template(dest_dir = tempdir(), overwrite = TRUE)
+cat("Template written to:", cfg, "\n")
+
+}

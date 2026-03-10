@@ -31,9 +31,11 @@ A list with workflow results
 }
 \description{
 Provides a user-friendly interface to configure and run the CMap workflow.
-Tries to use the GUI interface if available, falls back to console version if not.
+Uses the console configuration workflow for reliability and speed.
 }
 \examples{
+is.function(interactive_cmap_setup)
+
 \donttest{
 results <- interactive_cmap_setup()
 }

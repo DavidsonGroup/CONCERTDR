@@ -38,6 +38,9 @@ Extract expression data from CMap GCTX files based on parameters
 specified in a configuration file, returning a combined data frame.
 }
 \examples{
+cfg <- create_cmap_config_template(dest_dir = tempdir(), overwrite = TRUE)
+file.exists(cfg)
+
 \donttest{
 # First create and edit a configuration file
 create_cmap_config_template()

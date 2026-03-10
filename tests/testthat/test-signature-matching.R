@@ -40,6 +40,140 @@ make_mock_signature_result <- function() {
   )
 }
 
+# ── Internal scoring method tests ────────────────────────────────────────────
+
+test_that("score_ks returns expected structure", {
+  set.seed(1234)
+  ref <- matrix(rnorm(1000), nrow = 10,
+                dimnames = list(paste0("gene", 1:10), paste0("drug", 1:100)))
+  Up <- c("gene1", "gene2")
+  Down <- c("gene9", "gene10")
+
+  results <- CONCERTDR:::score_ks(ref, Up, Down, permuteNum = 100)
+
+  expect_s3_class(results, "data.frame")
+  expect_equal(nrow(results), 100)
+  expect_equal(ncol(results), 3)
+  expect_true(all(c("Score", "pValue", "pAdjValue") %in% names(results)))
+  expect_true(all(results$pValue >= 0 & results$pValue <= 1))
+  expect_true(all(results$pAdjValue >= 0 & results$pAdjValue <= 1))
+})
+
+test_that("score_xcos returns expected structure", {
+  set.seed(1234)
+  ref <- matrix(rnorm(1000), nrow = 10,
+                dimnames = list(paste0("gene", 1:10), paste0("drug", 1:100)))
+  query <- rnorm(4)
+  names(query) <- c("gene1", "gene2", "gene9", "gene10")
+
+  results <- CONCERTDR:::score_xcos(ref, query, topN = 4, permuteNum = 100)
+
+  expect_s3_class(results, "data.frame")
+  expect_equal(nrow(results), 100)
+  expect_equal(ncol(results), 3)
+  # XCos scores should be bounded by [-1, 1] (cosine similarity)
+  expect_true(all(results$Score >= -1 & results$Score <= 1, na.rm = TRUE))
+})
+
+test_that("score_xsum returns expected structure", {
+  set.seed(1234)
+  ref <- matrix(rnorm(1000), nrow = 10,
+                dimnames = list(paste0("gene", 1:10), paste0("drug", 1:100)))
+  Up <- c("gene1", "gene2")
+  Down <- c("gene9", "gene10")
+
+  results <- CONCERTDR:::score_xsum(ref, Up, Down, topN = 4, permuteNum = 100)
+
+  expect_s3_class(results, "data.frame")
+  expect_equal(nrow(results), 100)
+  expect_equal(ncol(results), 3)
+})
+
+test_that("score_gsea0 returns expected structure", {
+  set.seed(1234)
+  ref <- matrix(rnorm(1000), nrow = 10,
+                dimnames = list(paste0("gene", 1:10), paste0("drug", 1:100)))
+  Up <- c("gene1", "gene2")
+  Down <- c("gene9", "gene10")
+
+  results <- CONCERTDR:::score_gsea0(ref, Up, Down, permuteNum = 100)
+
+  expect_s3_class(results, "data.frame")
+  expect_equal(nrow(results), 100)
+  expect_equal(ncol(results), 3)
+})
+
+test_that("score_gsea1 returns expected structure", {
+  set.seed(1234)
+  ref <- matrix(rnorm(1000), nrow = 10,
+                dimnames = list(paste0("gene", 1:10), paste0("drug", 1:100)))
+  Up <- c("gene1", "gene2")
+  Down <- c("gene9", "gene10")
+
+  results <- CONCERTDR:::score_gsea1(ref, Up, Down, permuteNum = 100)
+
+  expect_s3_class(results, "data.frame")
+  expect_equal(nrow(results), 100)
+  expect_equal(ncol(results), 3)
+})
+
+test_that("score_gsea2 returns expected structure", {
+  set.seed(1234)
+  ref <- matrix(rnorm(1000), nrow = 10,
+                dimnames = list(paste0("gene", 1:10), paste0("drug", 1:100)))
+  Up <- c("gene1", "gene2")
+  Down <- c("gene9", "gene10")
+
+  results <- CONCERTDR:::score_gsea2(ref, Up, Down, permuteNum = 100)
+
+  expect_s3_class(results, "data.frame")
+  expect_equal(nrow(results), 100)
+  expect_equal(ncol(results), 3)
+})
+
+test_that("score_zhang returns expected structure", {
+  set.seed(1234)
+  ref <- matrix(rnorm(1000), nrow = 10,
+                dimnames = list(paste0("gene", 1:10), paste0("drug", 1:100)))
+  Up <- c("gene1", "gene2")
+  Down <- c("gene9", "gene10")
+
+  results <- CONCERTDR:::score_zhang(ref, Up, Down, permuteNum = 100)
+
+  expect_s3_class(results, "data.frame")
+  expect_equal(nrow(results), 100)
+  expect_equal(ncol(results), 3)
+  # Zhang scores should be bounded by [-1, 1]
+  expect_true(all(abs(results$Score) <= 1, na.rm = TRUE))
+})
+
+test_that("score_xcos errors on bad input", {
+  ref <- matrix(rnorm(100), nrow = 10,
+                dimnames = list(paste0("gene", 1:10), paste0("drug", 1:10)))
+  expect_error(CONCERTDR:::score_xcos(ref, "not_numeric", topN = 4),
+               "query must be a numeric")
+  expect_error(CONCERTDR:::score_xcos(ref, c(1, 2), topN = 4),
+               "query must have names")
+  q <- c(1, 2)
+  names(q) <- c("gene1", "gene2")
+  expect_error(CONCERTDR:::score_xcos(ref, q, topN = 6),
+               "topN is larger")
+})
+
+test_that("score_ks handles missing genes gracefully", {
+  set.seed(42)
+  ref <- matrix(rnorm(100), nrow = 10,
+                dimnames = list(paste0("gene", 1:10), paste0("drug", 1:10)))
+  Up <- c("gene1", "missing_gene_A")
+  Down <- c("gene10", "missing_gene_B")
+
+  results <- CONCERTDR:::score_ks(ref, Up, Down, permuteNum = 10)
+  expect_s3_class(results, "data.frame")
+  expect_equal(nrow(results), 10)
+})
+
+# ── Summary / print / plot tests ─────────────────────────────────────────────
+
 test_that("create_summary_from_results aggregates and ranks methods", {
   res1 <- data.frame(
     compound = c("A", "B"),
@@ -111,22 +245,30 @@ test_that("run_cmap_workflow composes extraction and matching", {
   expect_equal(class(out), "cmap_signature_result")
 })
 
-test_that("process_signature_with_df reports missing RCSM dependency", {
-  if (requireNamespace("RCSM", quietly = TRUE)) {
-    skip("RCSM installed; missing-dependency branch not applicable")
-  }
+# ── End-to-end integration test ──────────────────────────────────────────────
 
+test_that("process_signature_with_df runs end-to-end with internal methods", {
   sig_file <- system.file("extdata", "example_signature.txt", package = "CONCERTDR")
   ref_file <- system.file("extdata", "example_reference_df.csv", package = "CONCERTDR")
+
+  skip_if(!nzchar(sig_file), "Example signature file not found")
+  skip_if(!nzchar(ref_file), "Example reference file not found")
+
   ref_df <- read.csv(ref_file, row.names = 1, check.names = FALSE)
   ref_df$gene_symbol <- rownames(ref_df)
 
-  expect_error(
-    process_signature_with_df(
-      signature_file = sig_file,
-      reference_df = ref_df,
-      save_files = FALSE
-    ),
-    "Package 'RCSM' is required"
+  results <- process_signature_with_df(
+    signature_file = sig_file,
+    reference_df = ref_df,
+    output_dir = tempdir(),
+    permutations = 10,
+    methods = c("ks", "xsum"),
+    save_files = FALSE
   )
+
+  expect_s3_class(results, "cmap_signature_result")
+  expect_true("ks" %in% names(results$results))
+  expect_true("xsum" %in% names(results$results))
+  expect_true(nrow(results$results$ks) > 0)
+  expect_true(nrow(results$results$xsum) > 0)
 })

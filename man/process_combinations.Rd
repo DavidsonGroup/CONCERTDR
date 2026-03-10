@@ -36,9 +36,11 @@ Invisibly returns vector of output files
 Process combinations by extracting data for each
 }
 \examples{
+is.function(process_combinations)
+
 \donttest{
 # First create a configuration file
-extract_cmap_parameters("databases/siginfo_beta.txt")
+extract_cmap_parameters("databases/siginfo_beta.txt", write_config = TRUE)
 # Edit the configuration file as needed
 
 # Then generate combinations and process them

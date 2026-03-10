@@ -1,17 +1,19 @@
 #' Extract CMap experimental parameters from siginfo file
 #'
 #' Analyzes the CMap siginfo_beta.txt file to extract all available
-#' experimental parameters (time points, dosages, cell lines) and saves them to
-#' a configuration file for use in the DR pipeline.
+#' experimental parameters (time points, dosages, cell lines). By default the
+#' parameters are returned in memory; optionally they can also be written to a
+#' configuration file for use in the DR pipeline.
 #'
 #' @param siginfo_file Path to siginfo_beta.txt file
-#' @param write_config Logical; whether to write the configuration file (default: TRUE)
+#' @param write_config Logical; whether to write the configuration file (default: FALSE)
 #' @param config_dir Directory to save the configuration file; if NULL uses "conf"
 #' @param config_filename Name of the configuration file to write (default: "cmap_options.conf")
 #' @param filter_quality Logical; whether to filter for high-quality compounds only (default: TRUE)
 #' @param verbose Logical; whether to print progress messages (default: TRUE)
 #'
-#' @return A list with extracted parameters (times, doses, cells) and the config file path
+#' @return A list with extracted parameters (times, doses, cells) and, when
+#'   requested, the config file path.
 #'
 #' @examples
 #' ex_sig <- data.frame(
@@ -29,11 +31,11 @@
 #'
 #' \donttest{
 #' # Extract parameters and write config
-#' params <- extract_cmap_parameters("databases/siginfo_beta.txt")
+#' params <- extract_cmap_parameters("databases/siginfo_beta.txt", write_config = TRUE)
 #' }
 #'
 #' @export
-extract_cmap_parameters <- function(siginfo_file, write_config = TRUE,
+extract_cmap_parameters <- function(siginfo_file, write_config = FALSE,
                                     config_dir = "conf",
                                     config_filename = "cmap_options.conf",
                                     filter_quality = TRUE,
@@ -143,7 +145,7 @@ extract_cmap_parameters <- function(siginfo_file, write_config = TRUE,
 #'
 #' \donttest{
 #' # First create a configuration file
-#' extract_cmap_parameters("databases/siginfo_beta.txt")
+#' extract_cmap_parameters("databases/siginfo_beta.txt", write_config = TRUE)
 #' # Edit the configuration file as needed
 #'
 #' # Then generate combinations and process them
@@ -163,7 +165,7 @@ process_combinations <- function(combinations, output_dir = "output",
                                  install_packages = FALSE,
                                  verbose = TRUE) {
   # Check required packages
-  required_packages <- c("BiocManager", "data.table", "cmapR")
+  required_packages <- c("data.table", "cmapR")
   missing_packages <- setdiff(required_packages, utils::installed.packages()[,"Package"])
 
   if (length(missing_packages) > 0) {
@@ -171,8 +173,8 @@ process_combinations <- function(combinations, output_dir = "output",
       warning("install_packages=TRUE is deprecated and automatic installation is disabled in package functions.")
     }
 
-    cran_missing <- intersect(missing_packages, c("BiocManager", "data.table"))
-    bioc_missing <- intersect(missing_packages, c("cmapR"))
+    cran_missing <- intersect(missing_packages, "data.table")
+    bioc_missing <- intersect(missing_packages, "cmapR")
 
     install_msg <- character()
     if (length(cran_missing) > 0) {
@@ -181,7 +183,7 @@ process_combinations <- function(combinations, output_dir = "output",
     }
     if (length(bioc_missing) > 0) {
       install_msg <- c(install_msg,
-                       paste0("BiocManager::install(c('", paste(bioc_missing, collapse = "', '"), "'))"))
+                       paste0("BiocManager::install(c('", paste(bioc_missing, collapse = "', '"), "')) after installing BiocManager if needed"))
     }
 
     stop(

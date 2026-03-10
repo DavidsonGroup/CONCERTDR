@@ -71,7 +71,7 @@ write_config_file <- function(options_list, file_path) {
 #' \donttest{
 #' # First create a configuration file
 #' siginfo_file <- system.file("extdata", "example_siginfo.txt", package = "CONCERTDR")
-#' extract_cmap_parameters(siginfo_file)
+#' extract_cmap_parameters(siginfo_file, write_config = TRUE)
 #'
 #' # Then edit the config file to select desired parameters
 #' # Leave sections empty to use all options for that parameter

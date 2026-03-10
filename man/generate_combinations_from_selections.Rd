@@ -7,7 +7,7 @@
 generate_combinations_from_selections(selections, verbose = TRUE)
 }
 \arguments{
-\item{selections}{The list returned by create_interactive_config() or create_console_config()}
+\item{selections}{The list returned by create_console_config()}
 
 \item{verbose}{Logical; whether to print progress messages (default: TRUE)}
 }
@@ -18,11 +18,15 @@ Data frame of combinations
 Creates a data frame of combinations based on the selections from the interactive config functions
 }
 \examples{
+sel <- list(
+  selected = list(times = c("6 h"), doses = c("10 uM"), cells = c("A375", "MCF7")),
+  all_options = list(times = c("6 h", "24 h"), doses = c("10 uM"), cells = c("A375", "MCF7"))
+)
+generate_combinations_from_selections(sel, verbose = FALSE)
+
 \donttest{
-# GUI version (if available)
-selections <- create_interactive_config("databases/siginfo_beta.txt")
-# OR console version
-selections <- create_console_config("databases/siginfo_beta.txt")
+siginfo_file <- system.file("extdata", "example_siginfo.txt", package = "CONCERTDR")
+selections <- create_console_config(siginfo_file)
 
 # Generate combinations
 combinations <- generate_combinations_from_selections(selections)
