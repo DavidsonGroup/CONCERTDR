@@ -1,0 +1,374 @@
+---
+title: "Annotating Drug Repurposing Results"
+author:
+  - name: Hengxin Pan
+    affiliation: Walter and Eliza Hall Institute of Medical Research
+    email: pan.h@wehi.edu.au
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    number_sections: true
+vignette: >
+  %\VignetteIndexEntry{Annotating Drug Repurposing Results}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  message  = FALSE,
+  warning  = FALSE
+)
+```
+
+# Overview
+
+After running `process_signature_with_df()`, each row of the results table
+corresponds to a single CMap signature ID (a specific drug × dose × time ×
+cell-line combination). To make the results interpretable for biologists, we
+need to:
+
+1. Map signature IDs back to human-readable drug names.
+2. Add compound metadata: mechanism of action (MoA), targets, clinical phase.
+3. Summarise across contexts (same drug tested in multiple cell lines/doses).
+4. Identify which hits are drugs (small molecules) vs. gene-knockdown (shRNA/CRISPR).
+
+`annotate_drug_results()` performs all of these steps in a single call and
+returns four analysis-ready tables.
+
+```{r load}
+library(CONCERTDR)
+```
+
+# Input Data
+
+## Scoring results
+
+We use the bundled example data to generate KS scores:
+
+```{r run-scoring}
+sig_file     <- system.file("extdata", "example_signature.txt",
+                             package = "CONCERTDR")
+ref_file     <- system.file("extdata", "example_reference_df.csv",
+                             package = "CONCERTDR")
+reference_df <- read.csv(ref_file, row.names = 1, check.names = FALSE)
+reference_df$gene_symbol <- rownames(reference_df)
+
+scoring_results <- process_signature_with_df(
+  signature_file = sig_file,
+  reference_df   = reference_df,
+  methods        = "ks",
+  permutations   = 100,
+  save_files     = FALSE
+)
+
+results_df <- scoring_results$results$ks
+head(results_df[order(results_df$Score), ])
+```
+
+## Required metadata files
+
+`annotate_drug_results()` requires two metadata files (or data frames):
+
+| Input | Source | Key columns |
+|-------|--------|-------------|
+| `sig_info_file` | `siginfo_beta.txt` from clue.io, or the data frame from `subset_siginfo_beta()` | `sig_id`, `pert_type`, `pert_id` |
+| `comp_info_file` | `compoundinfo_beta.txt` from clue.io | `pert_id`, `cmap_name`, `moa`, `target`, `phase` |
+
+The bundled example siginfo is used here. For a real analysis, pass
+`sig_info_file = filtered_siginfo` (the data frame returned by
+`subset_siginfo_beta()`) directly — there is no need to write it to disk.
+
+```{r load-metadata}
+sig_info_file <- system.file("extdata", "example_siginfo.txt",
+                              package = "CONCERTDR")
+siginfo       <- read.delim(sig_info_file, stringsAsFactors = FALSE)
+head(siginfo)
+```
+
+For demonstration purposes we build a small compoundinfo data frame that
+mimics the structure of `compoundinfo_beta.txt`:
+
+```{r build-compinfo}
+compinfo <- data.frame(
+  pert_id           = c("BRD-K00001", "BRD-K00002", "BRD-K00003",
+                         "BRD-K00004", "BRD-K00005"),
+  pert_name         = c("imatinib",    "dasatinib",   "doxorubicin",
+                         "methotrexate", "vincristine"),
+  cmap_name         = c("imatinib",    "dasatinib",   "doxorubicin",
+                         "methotrexate", "vincristine"),
+  target            = c("BCR-ABL|KIT", "BCR-ABL|SRC|LCK",
+                         "TOP2A",        "DHFR",   "TUBB"),
+  moa               = c("kinase inhibitor", "kinase inhibitor",
+                         "DNA synthesis inhibitor",
+                         "antimetabolite", "microtubule inhibitor"),
+  phase             = c("Launched", "Launched", "Launched",
+                         "Launched", "Launched"),
+  stringsAsFactors  = FALSE
+)
+
+# Patch the bundled siginfo to include matching pert_id values
+siginfo$pert_id <- compinfo$pert_id[
+  match(siginfo$cmap_name, compinfo$cmap_name)
+]
+head(siginfo[, c("sig_id", "cmap_name", "pert_id", "pert_type")])
+```
+
+# Running `annotate_drug_results()`
+
+```{r annotate}
+views <- annotate_drug_results(
+  results_df     = results_df,
+  sig_info_file  = siginfo,     # data.frame, not a file path
+  comp_info_file = compinfo,
+  write_outputs  = FALSE,
+  verbose        = TRUE
+)
+```
+
+The function returns a named list with five elements:
+
+```{r view-names}
+names(views)
+```
+
+# The Four Output Tables
+
+## `tech_view_all` — Full technical table
+
+Contains one row per input signature ID with all integrated fields. This is
+the master table used by downstream visualisation functions.
+
+```{r tech-view}
+tv <- views$tech_view_all
+# Key columns for drug repurposing interpretation
+tv[order(tv$Score),
+   c("compound", "display_name", "Score", "pAdjValue",
+     "effect_direction", "cell_line", "time_h", "dose_uM",
+     "moa", "target")]
+```
+
+### Effect direction
+
+```{r effect-direction}
+table(tv$effect_direction)
+```
+
+Negative scores indicate that the drug *reverses* the disease signature —
+this is the standard criterion for candidate therapeutic repurposing.
+
+### Perturbation kind
+
+The `pert_kind` column categorises each hit as a Drug, Gene (knockdown or
+overexpression), or Control:
+
+```{r pert-kind}
+table(tv$pert_kind, tv$pert_type)
+```
+
+## `wetlab_drug_view` — Drug-focused summary
+
+De-duplicated to one row per drug (lowest score across all contexts).
+Intended for biologists who want a concise hit list for follow-up experiments.
+
+```{r wetlab-drug}
+views$wetlab_drug_view[,
+  c("display_name", "Score", "effect_direction",
+    "target", "moa", "phase")]
+```
+
+### Including dose in the drug view
+
+By default `dose_uM` is omitted from the wetlab drug view because the table
+is de-duplicated across contexts. Set `keep_dose_in_drug_view = TRUE` to
+retain it:
+
+```{r wetlab-drug-dose}
+views_with_dose <- annotate_drug_results(
+  results_df             = results_df,
+  sig_info_file          = siginfo,
+  comp_info_file         = compinfo,
+  keep_dose_in_drug_view = TRUE,
+  write_outputs          = FALSE,
+  verbose                = FALSE
+)
+views_with_dose$wetlab_drug_view[, c("display_name", "Score", "dose_uM")]
+```
+
+## `wetlab_gene_view` — Gene perturbation hits
+
+Contains only `trt_sh`, `trt_xpr`, and `trt_oe` perturbations. Empty in this
+example (all perturbations are drugs), but populated in a full CMap analysis
+that includes gene knockdown screens.
+
+```{r wetlab-gene}
+nrow(views$wetlab_gene_view)
+# In a full analysis this would list top shRNA/CRISPR hits:
+# views$wetlab_gene_view[, c("pert_name", "mode", "Score", "cell_line")]
+```
+
+## `drug_context_summary` — Context breadth table
+
+One row per drug, with counts showing in how many distinct contexts
+(cell lines, doses, time points) the drug appeared as a hit. Drugs that
+score well across many contexts are generally more compelling candidates.
+
+```{r drug-context}
+views$drug_context_summary[,
+  c("display_name", "best_score", "n_contexts",
+    "n_cell_lines", "moa_status")]
+```
+
+`moa_status` is `"Known"` when a MoA entry exists in the compound info and
+`"Unknown"` otherwise — useful for identifying drugs with unexplored mechanisms.
+
+# Writing Outputs to Disk
+
+Set `write_outputs = TRUE` and supply `output_dir` to save all four tables as
+tab-separated files:
+
+```{r write-outputs, eval=FALSE}
+views_saved <- annotate_drug_results(
+  results_df     = results_df,
+  sig_info_file  = "path/to/siginfo_beta.txt",
+  comp_info_file = "path/to/compoundinfo_beta.txt",
+  output_dir     = "results",
+  write_outputs  = TRUE
+)
+# Written files:
+# results/wetlab_drug_view.tsv
+# results/wetlab_gene_view.tsv
+# results/tech_view_all.tsv
+# results/drug_context_summary.tsv
+```
+
+The paths of written files are returned in `views$output_files`:
+
+```{r show-output-files, eval=FALSE}
+views_saved$output_files
+```
+
+# Compound ID Utilities
+
+## `extract_compound_id()`
+
+CMap signature IDs use a structured colon-delimited format:
+
+```
+LIBRARY_CELL_TIME : BRD_ID : DOSE : TIME
+```
+
+`extract_compound_id()` extracts any field by splitting on `:` or `_`, or by
+a custom regular expression.
+
+```{r extract-compound-id}
+example_ids <- c(
+  "CVD001_K562_6H:BRD-K52492843-001-01-8:10:6",
+  "CVD001_HL60_24H:BRD-A00619745-001-03-9:1:24"
+)
+
+# Extract the BRD identifier (field 2)
+extract_compound_id(example_ids, method = "split_colon", part_index = 2)
+
+# Extract using a regular expression
+extract_compound_id(example_ids, method = "regex",
+                    regex_pattern = "BRD-[A-Z0-9-]+")
+
+# Extract the cell line from the first field
+extract_compound_id(
+  vapply(strsplit(example_ids, ":"), `[[`, character(1), 1),
+  method = "split_underscore",
+  part_index = 2
+)
+```
+
+## `fuzzy_drug_match()`
+
+When reconciling drug names across databases (e.g., CMap vs. a clinical trial
+registry), name spelling may differ. `fuzzy_drug_match()` uses string
+similarity to find the closest matches.
+
+```{r fuzzy-match}
+if (requireNamespace("RecordLinkage", quietly = TRUE)) {
+  query_names <- c("imatinb", "doxorubicn", "vincristin")  # deliberate typos
+  ref_names   <- c("imatinib", "dasatinib", "doxorubicin",
+                   "methotrexate", "vincristine")
+
+  matches <- fuzzy_drug_match(
+    query_names     = query_names,
+    reference_names = ref_names,
+    method          = "levenshtein",
+    threshold       = 70
+  )
+  matches
+} else {
+  message("Install RecordLinkage for fuzzy name matching: ",
+          "install.packages('RecordLinkage')")
+}
+```
+
+# Full CMap Workflow (Reference)
+
+For completeness, here is the full workflow using the real CMap files:
+
+```{r full-workflow, eval=FALSE}
+# 1. Set paths once
+options(
+  CONCERTDR.gctx_file         = "/data/cmap/level5_beta_all_n1201944x12328.gctx",
+  CONCERTDR.siginfo_file      = "/data/cmap/siginfo_beta.txt",
+  CONCERTDR.geneinfo_file     = "/data/cmap/geneinfo_beta.txt",
+  CONCERTDR.compoundinfo_file = "/data/cmap/compoundinfo_beta.txt"
+)
+
+# 2. Filter siginfo to disease-relevant contexts
+filtered_siginfo <- subset_siginfo_beta(
+  getOption("CONCERTDR.siginfo_file"),
+  interactive = FALSE,
+  filters = list(
+    pert_type  = "trt_cp",
+    pert_itime = c("6 h", "24 h"),
+    cell_iname = c("K562", "HL60", "THP1", "JURKAT")
+  )
+)
+
+# 3. Build reference matrix
+reference_df <- extract_cmap_data_from_siginfo(
+  siginfo_file  = filtered_siginfo,
+  geneinfo_file = getOption("CONCERTDR.geneinfo_file"),
+  gctx_file     = getOption("CONCERTDR.gctx_file"),
+  filter_quality = FALSE,
+  landmark       = TRUE
+)
+
+# 4. Score
+results <- process_signature_with_df(
+  signature_file = "my_disease_signature.txt",
+  reference_df   = reference_df,
+  methods        = c("xsum", "ks"),
+  topN           = 400,
+  permutations   = 1000,
+  save_files     = FALSE
+)
+
+# 5. Annotate
+views <- annotate_drug_results(
+  results_df     = results$results$xsum,
+  sig_info_file  = filtered_siginfo,
+  comp_info_file = getOption("CONCERTDR.compoundinfo_file"),
+  output_dir     = "results",
+  write_outputs  = TRUE
+)
+
+head(views$wetlab_drug_view)
+```
+
+# Session Info
+
+```{r session-info}
+sessionInfo()
+```
