@@ -19,7 +19,7 @@
 #' @param data_dir Optional directory containing CMap files.
 #' @param selected_drug Optional drug identifier to filter \code{results_df}.
 #' @param selected_drug_col Column used with \code{selected_drug}.
-#' @param pert_id_col Perturbation id column (default: \code{"compound"}).
+#' @param pert_id_col Perturbation id column (default: \code{"sig_id"}).
 #' @param score_col Score column (default: \code{"Score"}).
 #' @param max_genes Maximum number of signature genes (default: 100).
 #' @param max_perts Maximum number of perturbations (default: 60).
@@ -66,14 +66,25 @@ extract_signature_zscores <- function(results_df,
                                       data_dir          = getOption("CONCERTDR.data_dir", NULL),
                                       selected_drug     = NULL,
                                       selected_drug_col = NULL,
-                                      pert_id_col       = "compound",
+                                      pert_id_col       = "sig_id",
                                       score_col         = "Score",
                                       max_genes         = 100,
                                       max_perts         = 60,
                                       output_zscores    = NULL,
                                       verbose           = TRUE) {
   if (!is.data.frame(results_df)) stop("results_df must be a data.frame")
-  if (!pert_id_col %in% names(results_df)) stop("results_df must contain pert_id_col: ", pert_id_col)
+  if (!pert_id_col %in% names(results_df)) {
+    fallback_cols <- c("sig_id", "compound")
+    fallback_cols <- fallback_cols[fallback_cols %in% names(results_df)]
+    if (length(fallback_cols) > 0) {
+      if (verbose) {
+        message("pert_id_col '", pert_id_col, "' not found; using '", fallback_cols[1], "' instead")
+      }
+      pert_id_col <- fallback_cols[1]
+    } else {
+      stop("results_df must contain pert_id_col: ", pert_id_col)
+    }
+  }
   if (!score_col %in% names(results_df)) stop("results_df must contain score_col: ", score_col)
   if (!file.exists(signature_file)) stop("signature_file not found: ", signature_file)
   
@@ -85,9 +96,9 @@ extract_signature_zscores <- function(results_df,
     if (length(ok) == 0) return(NULL)
     ok[1]
   }
-
+  
   use_reference_df <- !is.null(reference_df)
-
+  
   if (use_reference_df) {
     if (is.data.frame(reference_df)) {
       if ("gene_symbol" %in% names(reference_df)) {
@@ -101,19 +112,19 @@ extract_signature_zscores <- function(results_df,
     } else {
       stop("reference_df must be a data.frame or matrix")
     }
-
+    
     if (is.null(rownames(reference_mat)) || is.null(colnames(reference_mat))) {
       stop("reference_df must have gene identifiers as row names and perturbation ids as column names")
     }
-
+    
     rownames(reference_mat) <- toupper(as.character(rownames(reference_mat)))
     reference_mat <- apply(reference_mat, 2, as.numeric)
     rownames(reference_mat) <- toupper(as.character(rownames(reference_df)))
     colnames(reference_mat) <- colnames(reference_df)
   }
-
+  
   gctx_default_name <- "level5_beta_all_n1201944x12328.gctx"
-
+  
   gctx_file <- if (!use_reference_df) {
     first_existing(c(
       gctx_file,
@@ -129,17 +140,17 @@ extract_signature_zscores <- function(results_df,
       Sys.getenv("CONCERTDR_GCTX_FILE", unset = "")
     ))
   }
-
+  
   if (is.null(gctx_file) && !use_reference_df) {
     stop("Could not resolve gctx_file. Provide gctx_file explicitly, set options(CONCERTDR.gctx_file='...'), or supply reference_df")
   }
-
+  
   inferred_data_dir <- if (!is.null(gctx_file)) {
     if (!is.null(data_dir) && nzchar(data_dir)) data_dir else dirname(gctx_file)
   } else {
     data_dir
   }
-
+  
   gene_map <- NULL
   if (!use_reference_df) {
     geneinfo_file <- first_existing(c(
@@ -174,7 +185,7 @@ extract_signature_zscores <- function(results_df,
     }
     if (!is.null(siginfo_file)) message(" - siginfo_file: ", siginfo_file)
   }
-
+  
   if (!use_reference_df) {
     geneinfo <- if (requireNamespace("data.table", quietly = TRUE)) {
       data.table::fread(geneinfo_file, data.table = FALSE)
@@ -191,7 +202,7 @@ extract_signature_zscores <- function(results_df,
     gene_map <- as.character(geneinfo$gene_id)
     names(gene_map) <- geneinfo$gene_symbol
   }
-
+  
   # signature genes and order (down then up)
   sig <- if (requireNamespace("data.table", quietly = TRUE)) {
     data.table::fread(signature_file, data.table = FALSE)
@@ -213,7 +224,7 @@ extract_signature_zscores <- function(results_df,
     sig <- sig[sig[[gene_col]] %in% names(gene_map), , drop = FALSE]
     if (nrow(sig) == 0) stop("No signature genes mapped to geneinfo gene_id")
   }
-
+  
   down <- sig[sig[[log2fc_col]] < 0, , drop = FALSE]
   down <- down[order(down[[log2fc_col]], decreasing = FALSE), , drop = FALSE]
   up   <- sig[sig[[log2fc_col]] > 0, , drop = FALSE]
@@ -234,7 +245,7 @@ extract_signature_zscores <- function(results_df,
   if (!is.null(selected_drug)) {
     drug_col <- selected_drug_col
     if (is.null(drug_col)) {
-      candidates <- intersect(c("display_name", "pert_id", "cmap_name", "pert_name"), names(tech))
+      candidates <- intersect(c("perturbation_name", "display_name", "pert_id", "cmap_name", "pert_name"), names(tech))
       if (length(candidates) == 0) stop("selected_drug given but no suitable selected_drug_col found")
       drug_col <- candidates[1]
     }
@@ -264,7 +275,7 @@ extract_signature_zscores <- function(results_df,
                         quote = "", comment.char = "", fill = TRUE)
     }
     names(si) <- trimws(names(si))
-    req  <- c("sig_id", "cmap_name", "pert_idose", "pert_itime", "cell_iname")
+    req  <- c("sig_id", "cmap_name", "pert_iname", "pert_id", "pert_idose", "pert_itime", "cell_iname")
     have <- intersect(req, names(si))
     if ("sig_id" %in% have) {
       si <- si[, have, drop = FALSE]
@@ -274,7 +285,20 @@ extract_signature_zscores <- function(results_df,
         if (!sid %in% rownames(si)) return(sid)
         row  <- si[sid, , drop = FALSE]
         vals <- c()
-        for (nm in c("cmap_name", "pert_idose", "pert_itime", "cell_iname")) {
+        name_value <- NULL
+        for (nm in c("cmap_name", "pert_iname", "pert_id")) {
+          if (nm %in% names(row)) {
+            v <- as.character(row[[nm]])[1]
+            if (!is.na(v) && nzchar(v)) {
+              name_value <- v
+              break
+            }
+          }
+        }
+        if (!is.null(name_value)) {
+          vals <- c(vals, name_value)
+        }
+        for (nm in c("pert_idose", "pert_itime", "cell_iname")) {
           if (nm %in% names(row)) {
             v <- as.character(row[[nm]])[1]
             if (!is.na(v) && nzchar(v)) vals <- c(vals, v)
@@ -285,7 +309,7 @@ extract_signature_zscores <- function(results_df,
       sig_labels <- vapply(sig_ids, make_label, character(1))
     }
   }
-
+  
   if (use_reference_df) {
     z_mat <- reference_mat[ordered_ids, sig_ids, drop = FALSE]
     rownames(z_mat) <- ordered_genes
@@ -348,11 +372,11 @@ extract_signature_zscores <- function(results_df,
 #'   repeatedly passing full file paths.
 #' @param selected_drug Optional drug identifier to filter \code{results_df}
 #'   before selecting perturbations.
-#' @param selected_drug_col Optional column used with \code{selected_drug}.
-#'   If NULL, auto-detect from \code{display_name}, \code{pert_id},
-#'   \code{cmap_name}, \code{pert_name}.
+#' @param selected_drug_col Optional column used with \\code{selected_drug}.
+#'   If NULL, auto-detect from \\code{perturbation_name}, \\code{display_name},
+#'   \\code{pert_id}, \\code{cmap_name}, \\code{pert_name}.
 #' @param pert_id_col Perturbation id column in \code{results_df}
-#'   (default: \code{"compound"}, i.e. sig_id in CONCERTDR results).
+#'   (default: \code{"sig_id"}; falls back to \code{"compound"} for older results).
 #' @param score_col Score column in \code{results_df} (default: \code{"Score"}).
 #' @param max_genes Maximum number of signature genes to use (default: 100).
 #' @param max_perts Maximum number of perturbations to show (default: 60).
@@ -413,7 +437,7 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
                                                   data_dir = getOption("CONCERTDR.data_dir", NULL),
                                                   selected_drug = NULL,
                                                   selected_drug_col = NULL,
-                                                  pert_id_col = "compound",
+                                                  pert_id_col = "sig_id",
                                                   score_col = "Score",
                                                   max_genes = 100,
                                                   max_perts = 60,

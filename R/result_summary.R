@@ -104,7 +104,7 @@ annotate_drug_results <- function(results_df,
   if (!missing(perfect_match_only) && verbose) {
     message("'perfect_match_only' is deprecated and ignored.")
   }
-
+  
   # Local helpers
   read_or_use_df <- function(file_or_df, file_description, select_cols = NULL) {
     if (is.data.frame(file_or_df)) {
@@ -113,7 +113,7 @@ annotate_drug_results <- function(results_df,
       if (!file.exists(file_or_df)) {
         stop(file_description, " file not found: ", file_or_df)
       }
-
+      
       if (requireNamespace("data.table", quietly = TRUE)) {
         if (is.null(select_cols)) {
           df <- data.table::fread(file_or_df, sep = "\t", header = TRUE,
@@ -145,40 +145,40 @@ annotate_drug_results <- function(results_df,
     } else {
       stop(file_description, " must be either a data.frame or a file path")
     }
-
+    
     names(df) <- trimws(names(df))
     df
   }
-
+  
   parse_compound_context <- function(df, col = "compound") {
     if (!col %in% names(df)) {
       stop("Missing column for compound parsing: ", col)
     }
-
+    
     x <- as.character(df[[col]])
     x[is.na(x)] <- ""
-
+    
     parts <- strsplit(x, ":", fixed = TRUE)
     get_nth <- function(v, n) if (length(v) >= n) v[[n]] else ""
-
+    
     left <- vapply(parts, get_nth, character(1), n = 1)
     broad_id <- vapply(parts, get_nth, character(1), n = 2)
     dose_raw <- vapply(parts, get_nth, character(1), n = 3)
     time_raw <- vapply(parts, get_nth, character(1), n = 4)
-
+    
     left_parts <- strsplit(left, "_", fixed = TRUE)
     library <- vapply(left_parts, get_nth, character(1), n = 1)
     cell_line <- vapply(left_parts, get_nth, character(1), n = 2)
     time_token <- vapply(left_parts, get_nth, character(1), n = 3)
-
+    
     time_token_num <- suppressWarnings(as.numeric(sub(".*?(\\d+).*", "\\1", time_token)))
     no_digit <- !grepl("\\d+", time_token)
     time_token_num[no_digit] <- NA_real_
-
+    
     dose_uM <- suppressWarnings(as.numeric(dose_raw))
     time_h_from_4th <- suppressWarnings(as.numeric(time_raw))
     time_h <- ifelse(!is.na(time_h_from_4th), time_h_from_4th, time_token_num)
-
+    
     out <- df
     out$library <- ifelse(library == "", NA_character_, library)
     out$cell_line <- ifelse(cell_line == "", NA_character_, cell_line)
@@ -187,7 +187,7 @@ annotate_drug_results <- function(results_df,
     out$time_h <- time_h
     out
   }
-
+  
   add_pert_kind_and_mode <- function(df) {
     pert_type_to_kind <- c(
       "trt_cp" = "Drug",
@@ -205,7 +205,7 @@ annotate_drug_results <- function(results_df,
       "ctl_untrt.cns" = "Control",
       "ctl_untrt" = "Control"
     )
-
+    
     pert_type_to_mode <- c(
       "trt_xpr" = "XPR",
       "trt_sh" = "XPR",
@@ -216,7 +216,7 @@ annotate_drug_results <- function(results_df,
       "trt_cp" = "Drug",
       "trt_lig" = "Drug"
     )
-
+    
     pt <- tolower(trimws(as.character(df$pert_type)))
     out <- df
     out$pert_kind <- unname(pert_type_to_kind[pt])
@@ -226,21 +226,21 @@ annotate_drug_results <- function(results_df,
     out$dose_unit <- ifelse(out$pert_kind == "Drug", "uM", "construct/NA")
     out
   }
-
+  
   dedup_drug_rows <- function(df, score_col, group_keys = c("pert_id", "display_name")) {
     if (nrow(df) == 0) return(df)
-
+    
     keys <- intersect(group_keys, names(df))
     if (length(keys) == 0) return(df)
-
+    
     group_id <- interaction(df[, keys, drop = FALSE], drop = TRUE, lex.order = TRUE)
     groups <- split(df, group_id)
-
+    
     collapse_unique <- function(x) {
       xv <- unique(as.character(x[!is.na(x) & as.character(x) != ""]))
       if (length(xv) == 0) NA_character_ else paste(sort(xv), collapse = "; ")
     }
-
+    
     rows <- lapply(groups, function(g) {
       out <- g[1, , drop = FALSE]
       for (nm in names(g)) {
@@ -260,12 +260,12 @@ annotate_drug_results <- function(results_df,
       }
       out
     })
-
+    
     out <- do.call(rbind, rows)
     rownames(out) <- NULL
     out
   }
-
+  
   if (!is.data.frame(results_df)) {
     stop("results_df must be a data.frame")
   }
@@ -275,13 +275,13 @@ annotate_drug_results <- function(results_df,
   if (!score_col %in% names(results_df)) {
     stop("results_df must contain score column: ", score_col)
   }
-
+  
   if (verbose) message("Integrating signature results with siginfo and compoundinfo...")
-
+  
   res <- results_df
   sig_ids <- unique(as.character(res[[compound_col]]))
   sig_ids <- sig_ids[!is.na(sig_ids) & nzchar(sig_ids)]
-
+  
   sig_cols <- c(
     "sig_id", "pert_type", "pert_id", "pert_iname", "pert_name",
     "cmap_name", "phase", "compound_aliases", "canonical_smiles",
@@ -289,82 +289,104 @@ annotate_drug_results <- function(results_df,
   )
   siginfo <- read_or_use_df(sig_info_file, "Signature info", select_cols = sig_cols)
   siginfo <- siginfo[, intersect(sig_cols, names(siginfo)), drop = FALSE]
-
+  
   if (!all(c("sig_id", "pert_type") %in% names(siginfo))) {
     stop("sig_info_file must contain columns: sig_id, pert_type")
   }
-
+  
   siginfo <- siginfo[siginfo$sig_id %in% sig_ids, , drop = FALSE]
-
+  
   res2 <- merge(res, siginfo, by.x = compound_col, by.y = "sig_id", all.x = TRUE)
   if (!"pert_type" %in% names(res2) || all(is.na(res2$pert_type))) {
     stop("pert_type missing after merge; check sig_info_file")
   }
-
+  
   if (!"pert_id" %in% names(res2) || all(is.na(res2$pert_id) | !nzchar(as.character(res2$pert_id)))) {
     if (compound_col %in% names(res2)) {
       res2$pert_id <- extract_compound_id(as.character(res2[[compound_col]]), method = "split_colon", part_index = 2)
     }
   }
-
+  
   if (!"pert_id" %in% names(res2) || all(is.na(res2$pert_id) | !nzchar(as.character(res2$pert_id)))) {
     stop("Could not determine 'pert_id'. Ensure sig_info_file contains 'pert_id' or compound strings include a BRD ID in colon-delimited format.")
   }
-
+  
   pert_ids <- unique(as.character(res2$pert_id))
   pert_ids <- pert_ids[!is.na(pert_ids) & nzchar(pert_ids)]
-
-  compound_cols <- c(
-    "pert_id", "pert_name", "cmap_name", "target", "moa", "phase",
-    "compound_aliases", "canonical_smiles", "inchi_key"
-  )
-
+  
+  compound_cols <- c("pert_id", "target", "moa")
+  
   compinfo <- read_or_use_df(comp_info_file, "Compound info", select_cols = compound_cols)
   compinfo <- compinfo[, intersect(compound_cols, names(compinfo)), drop = FALSE]
-
+  
   if (!"pert_id" %in% names(compinfo)) {
     stop("comp_info_file must contain column 'pert_id'")
   }
-
+  
   compinfo <- compinfo[compinfo$pert_id %in% pert_ids, , drop = FALSE]
   compinfo <- compinfo[!duplicated(compinfo$pert_id), , drop = FALSE]
-
+  
   res2 <- merge(res2, compinfo, by = "pert_id", all.x = TRUE, suffixes = c("", "_comp"))
-
+  
+  if (!"pert_name" %in% names(res2)) {
+    res2$pert_name <- NA_character_
+  }
+  if ("pert_iname" %in% names(res2)) {
+    use_pert_iname_for_name <- is.na(res2$pert_name) | !nzchar(as.character(res2$pert_name))
+    res2$pert_name[use_pert_iname_for_name] <- as.character(res2$pert_iname[use_pert_iname_for_name])
+  }
+  
+  if (!"cmap_name" %in% names(res2)) {
+    res2$cmap_name <- NA_character_
+  }
+  if ("pert_iname" %in% names(res2)) {
+    use_pert_iname_for_cmap <- is.na(res2$cmap_name) | !nzchar(as.character(res2$cmap_name))
+    res2$cmap_name[use_pert_iname_for_cmap] <- as.character(res2$pert_iname[use_pert_iname_for_cmap])
+  }
+  
   res2 <- parse_compound_context(res2, col = compound_col)
   res2 <- add_pert_kind_and_mode(res2)
-
+  
   # display_name: cmap_name -> pert_name -> pert_id
   cmap <- if ("cmap_name" %in% names(res2)) as.character(res2$cmap_name) else rep(NA_character_, nrow(res2))
   pname <- if ("pert_name" %in% names(res2)) as.character(res2$pert_name) else rep(NA_character_, nrow(res2))
   pid <- as.character(res2$pert_id)
   res2$display_name <- ifelse(!is.na(cmap) & nzchar(cmap), cmap,
                               ifelse(!is.na(pname) & nzchar(pname), pname, pid))
-
+  res2$sig_id <- as.character(res2[[compound_col]])
+  res2$perturbation_name <- as.character(res2$display_name)
+  
   score_num <- suppressWarnings(as.numeric(res2[[score_col]]))
   res2$effect_direction <- ifelse(
     score_num < 0,
     "Reversal (potentially therapeutic)",
     ifelse(score_num > 0, "Mimic/Aggravating", "Neutral")
   )
-
+  
   moa <- if ("moa" %in% names(res2)) as.character(res2$moa) else rep(NA_character_, nrow(res2))
   res2$moa_status <- ifelse(!is.na(moa) & nzchar(moa), "Known", "Unknown")
-
+  
   # Tech view
+  hidden_output_cols <- c("display_name", "cmap_name", "pert_name", "pert_iname", "broad_id")
+  if (!identical(compound_col, "sig_id")) {
+    hidden_output_cols <- c(hidden_output_cols, compound_col)
+  }
   preferred <- c(
-    "pert_type", "pert_kind", "mode", "display_name", "pert_id", "pert_name",
+    "sig_id", "perturbation_name", "pert_id", "pert_type", "pert_kind", "mode",
     "compound_aliases", "target", "moa", "moa_status", "phase",
     "library", "cell_line", "time_h", "dose_uM", "dose_unit",
     score_col, "effect_direction", p_col, padj_col, "rank",
-    compound_col, "broad_id", "cmap_name", "canonical_smiles", "inchi_key"
+    "canonical_smiles", "inchi_key"
   )
-  tech_cols <- c(intersect(preferred, names(res2)), setdiff(names(res2), preferred))
-  tech_view <- res2[, tech_cols, drop = FALSE]
-
+  tech_cols <- c(
+    intersect(preferred, names(res2)),
+    setdiff(names(res2), c(preferred, hidden_output_cols))
+  )
+  tech_view <- res2[, unique(tech_cols), drop = FALSE]
+  
   # Wetlab drug view
   drug_cols <- c(
-    "pert_type", "pert_kind", "display_name", "pert_id",
+    "perturbation_name", "pert_id", "pert_type", "pert_kind",
     "compound_aliases", "target", "moa", "phase",
     score_col, "effect_direction", "cell_line", "time_h"
   )
@@ -373,14 +395,15 @@ annotate_drug_results <- function(results_df,
   }
   drug_cols <- intersect(drug_cols, names(res2))
   wetlab_drug <- res2[res2$pert_kind == "Drug", drug_cols, drop = FALSE]
-  wetlab_drug <- dedup_drug_rows(wetlab_drug, score_col = score_col)
+  wetlab_drug <- dedup_drug_rows(wetlab_drug, score_col = score_col,
+                                 group_keys = c("pert_id", "perturbation_name"))
   if (nrow(wetlab_drug) > 0) {
     wetlab_drug <- wetlab_drug[order(suppressWarnings(as.numeric(wetlab_drug[[score_col]]))), , drop = FALSE]
   }
-
+  
   # Wetlab gene view
   gene_cols <- c(
-    "pert_type", "pert_kind", "mode", "pert_name", "pert_id",
+    "perturbation_name", "pert_id", "pert_type", "pert_kind", "mode",
     score_col, "effect_direction", "cell_line", "time_h", "library"
   )
   gene_cols <- intersect(gene_cols, names(res2))
@@ -388,7 +411,7 @@ annotate_drug_results <- function(results_df,
   if (nrow(wetlab_gene) > 0) {
     wetlab_gene <- wetlab_gene[order(suppressWarnings(as.numeric(wetlab_gene[[score_col]]))), , drop = FALSE]
   }
-
+  
   # Drug context summary
   drug_only <- res2[res2$pert_kind == "Drug", , drop = FALSE]
   if (nrow(drug_only) > 0) {
@@ -397,15 +420,15 @@ annotate_drug_results <- function(results_df,
       sc <- suppressWarnings(as.numeric(drug_only[[score_col]][idx]))
       idx[order(sc, na.last = TRUE)][1]
     }), use.names = FALSE)
-
-    summary_cols <- intersect(c("pert_type", "pert_kind", "pert_id", "display_name", "phase", "moa_status", score_col),
+    
+    summary_cols <- intersect(c("perturbation_name", "pert_id", "pert_type", "pert_kind", "phase", "moa_status", score_col),
                               names(drug_only))
     drug_summary <- drug_only[idx_best, summary_cols, drop = FALSE]
     names(drug_summary)[names(drug_summary) == score_col] <- "best_score"
-
+    
     ctx_count <- table(as.character(drug_only$pert_id))
     drug_summary$n_contexts <- as.integer(ctx_count[as.character(drug_summary$pert_id)])
-
+    
     if ("cell_line" %in% names(drug_only)) {
       n_cells <- tapply(drug_only$cell_line, drug_only$pert_id, function(x) length(unique(x[!is.na(x)])))
       drug_summary$n_cell_lines <- as.integer(n_cells[as.character(drug_summary$pert_id)])
@@ -414,36 +437,36 @@ annotate_drug_results <- function(results_df,
       n_time <- tapply(drug_only$time_h, drug_only$pert_id, function(x) length(unique(x[!is.na(x)])))
       drug_summary$n_time <- as.integer(n_time[as.character(drug_summary$pert_id)])
     }
-
+    
     ord_score <- suppressWarnings(as.numeric(drug_summary$best_score))
     drug_summary <- drug_summary[order(-drug_summary$n_contexts, ord_score), , drop = FALSE]
   } else {
     drug_summary <- data.frame()
   }
-
+  
   # Write outputs if requested
   output_files <- character()
   if (isTRUE(write_outputs) || !is.null(output_dir)) {
     if (is.null(output_dir)) output_dir <- "."
     if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
-
+    
     fp1 <- file.path(output_dir, "wetlab_drug_view.tsv")
     fp2 <- file.path(output_dir, "wetlab_gene_view.tsv")
     fp3 <- file.path(output_dir, "tech_view_all.tsv")
     fp4 <- file.path(output_dir, "drug_context_summary.tsv")
-
+    
     utils::write.table(wetlab_drug, fp1, sep = "\t", row.names = FALSE, quote = FALSE, na = "")
     utils::write.table(wetlab_gene, fp2, sep = "\t", row.names = FALSE, quote = FALSE, na = "")
     utils::write.table(tech_view, fp3, sep = "\t", row.names = FALSE, quote = FALSE, na = "")
     utils::write.table(drug_summary, fp4, sep = "\t", row.names = FALSE, quote = FALSE, na = "")
-
+    
     output_files <- c(
       wetlab_drug_view = fp1,
       wetlab_gene_view = fp2,
       tech_view_all = fp3,
       drug_context_summary = fp4
     )
-
+    
     if (verbose) {
       message("Wrote output files:")
       message(" - ", fp1)
@@ -452,13 +475,13 @@ annotate_drug_results <- function(results_df,
       message(" - ", fp4)
     }
   }
-
+  
   # Backward compatibility: legacy single output file
   if (!is.null(output_file)) {
     utils::write.csv(tech_view, file = output_file, row.names = FALSE)
     if (verbose) message("Wrote legacy output_file (tech_view_all as CSV): ", output_file)
   }
-
+  
   return(list(
     wetlab_drug_view = wetlab_drug,
     wetlab_gene_view = wetlab_gene,
@@ -503,7 +526,7 @@ extract_compound_id <- function(compound_strings,
                                 method = "split_colon",
                                 regex_pattern = NULL,
                                 part_index = 2) {
-
+  
   if (method == "split_colon") {
     return(vapply(strsplit(compound_strings, ":"), function(x) {
       if (length(x) >= part_index) x[part_index] else x[1]
@@ -557,25 +580,25 @@ fuzzy_drug_match <- function(query_names,
                              method = "levenshtein",
                              threshold = 80,
                              top_n = 1) {
-
+  
   if (!requireNamespace("RecordLinkage", quietly = TRUE)) {
     stop("Package 'RecordLinkage' is required for fuzzy matching. Please install it with: install.packages('RecordLinkage')")
   }
-
+  
   results <- data.frame(
     query_name = character(),
     matched_name = character(),
     similarity_score = numeric(),
     stringsAsFactors = FALSE
   )
-
+  
   for (i in seq_along(query_names)) {
     query <- query_names[i]
-
+    
     if (is.na(query) || query == "") {
       next
     }
-
+    
     # Calculate similarities
     if (method == "levenshtein") {
       similarities <- RecordLinkage::levenshteinSim(query, reference_names) * 100
@@ -586,13 +609,13 @@ fuzzy_drug_match <- function(query_names,
     } else {
       stop("Invalid method. Must be 'levenshtein', 'jaro', or 'jarowinkler'")
     }
-
+    
     # Find top matches above threshold
     above_threshold <- which(similarities >= threshold)
     if (length(above_threshold) > 0) {
       sorted_indices <- above_threshold[order(similarities[above_threshold], decreasing = TRUE)]
       top_indices <- utils::head(sorted_indices, top_n)
-
+      
       for (idx in top_indices) {
         results <- rbind(results, data.frame(
           query_name = query,
@@ -603,6 +626,6 @@ fuzzy_drug_match <- function(query_names,
       }
     }
   }
-
+  
   return(results)
 }
