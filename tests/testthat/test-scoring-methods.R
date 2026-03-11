@@ -118,18 +118,12 @@ test_that("score_ks rownames match reference column names", {
   expect_equal(rownames(out), colnames(ref))
 })
 
-test_that("score_ks combined score is 0 when both gene sets enrich strongly (same-sign product)", {
-  # The KS enrichment sub-function always returns a non-negative value via
-  # ifelse(maxES > -minES, maxES, -minES).  When a drug strongly reverses
-  # the query signature, both scoreUp and scoreDown are large positive numbers,
-  # so their product > 0 and ks_combined returns 0 by design.
-  # This test documents that known behaviour and verifies it does not error.
-  d   <- make_directional_ref()
-  out <- CONCERTDR:::score_ks(d$mat, d$queryUp, d$queryDown, permuteNum = 50)
-  expect_s3_class(out, "data.frame")
-  expect_equal(nrow(out), ncol(d$mat))
-  # Scores are real numbers (no NaN / Inf)
-  expect_true(all(is.finite(out$Score)))
+test_that("score_ks produces negative score for reversed signature", {
+  d <- make_directional_ref()
+  out <- CONCERTDR:::score_ks(d$mat, d$queryUp, d$queryDown, permuteNum = 200)
+  expect_lt(out["drug1", "Score"], 0)
+  expect_gt(out["drug2", "Score"], 0)
+  expect_true(any(out$Score != 0))
 })
 
 test_that("score_ks silently drops genes not in reference", {
@@ -147,11 +141,17 @@ test_that("score_ks silently drops genes not in reference", {
 test_that("score_ks scores are 0 when query sets cancel", {
   ref <- make_ref(10, 10)
   # Same gene in both up and down — after intersect both become "gene1"
-  # KS combined returns 0 when scoreUp * scoreDown > 0
-  # We can't guarantee 0 but we can check it runs without error
-  expect_no_error(
-    CONCERTDR:::score_ks(ref, c("gene1"), c("gene1"), permuteNum = 10)
-  )
+  out <- CONCERTDR:::score_ks(ref, c("gene1"), c("gene1"), permuteNum = 10)
+  expect_true(all(out$Score == 0))
+})
+
+test_that("score_ks matches RCSM reference example on synthetic data", {
+  set.seed(1234)
+  ref <- matrix(rnorm(1000), nrow = 10,
+                dimnames = list(paste0("gene", 1:10), paste0("drug", 1:100)))
+  out <- CONCERTDR:::score_ks(ref, c("gene1", "gene2"), c("gene9", "gene10"),
+                              permuteNum = 10000)
+  expect_equal(out$Score[36], -1, tolerance = 1e-8)
 })
 
 # ── score_gsea0 / gsea1 / gsea2 ─────────────────────────────────────────────

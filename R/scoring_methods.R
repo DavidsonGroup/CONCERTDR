@@ -126,18 +126,19 @@ score_ks <- function(refMatrix, queryUp, queryDown,
   queryDown <- as.character(queryDown)
 
   ks_enrichment <- function(refList, query) {
-    tagIndicator   <- sign(match(refList, query, nomatch = 0))
-    noTagIndicator <- 1 - tagIndicator
-    N  <- length(refList)
-    Nh <- length(query)
-    Nm <- N - Nh
-    normTag   <- 1.0 / Nh
-    normNoTag <- 1.0 / Nm
-    RES <- cumsum(tagIndicator * normTag - noTagIndicator * normNoTag)
-    maxES <- max(RES);  minES <- min(RES)
-    maxES <- ifelse(is.na(maxES), 0, maxES)
-    minES <- ifelse(is.na(minES), 0, minES)
-    ifelse(maxES > -minES, maxES, -minES)
+    lenRef <- length(refList)
+    queryRank <- match(query, refList)
+    queryRank <- sort(queryRank[!is.na(queryRank)])
+    lenQuery <- length(queryRank)
+
+    if (lenQuery == 0) {
+      return(0)
+    }
+
+    d <- seq_len(lenQuery) / lenQuery - queryRank / lenRef
+    a <- max(d)
+    b <- -min(d) + 1 / lenQuery
+    ifelse(a > b, a, -b)
   }
 
   ks_combined <- function(refList, queryUp, queryDown) {
@@ -361,8 +362,8 @@ score_xcos <- function(refMatrix, query, topN = 500,
   xcos_single <- function(refList, query) {
     common <- intersect(names(refList), names(query))
     if (length(common) == 0) return(NA_real_)
-    r <- refList[common];  q <- query[common]
-    r <- r[order(names(r))]; q <- q[order(names(q))]
+    r <- refList[common]
+    q <- query[common]
     denom <- sqrt(crossprod(r) * crossprod(q))
     if (denom == 0) return(0)
     (crossprod(r, q) / denom)[1, 1]

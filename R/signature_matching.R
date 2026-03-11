@@ -187,10 +187,10 @@ process_signature_with_df <- function(signature_file, reference_df, output_dir =
     stop("Signature file must contain both up-regulated (log2FC > 0) and down-regulated (log2FC < 0) genes")
   }
   
-  # Define query (all genes with their ranks)
+  # Define query for XCos (signed values with gene names)
   query_genes <- gene_data$Gene
-  ranks <- rank(-gene_data$log2FC)  # Rank by decreasing log2FC
-  query <- stats::setNames(ranks, query_genes)
+  query_values <- suppressWarnings(as.numeric(gene_data$log2FC))
+  query <- stats::setNames(query_values, query_genes)
   
   # Prepare reference data for processing
   message("Preparing reference data for analysis...")
@@ -248,7 +248,7 @@ process_signature_with_df <- function(signature_file, reference_df, output_dir =
     
     xcos = function() {
       message(sprintf("Running XCos score with topN = %d...", topN))
-      score_xcos(refMatrix = ref, query = query[query_genes %in% rownames(ref)],
+      score_xcos(refMatrix = ref, query = query[names(query) %in% rownames(ref)],
                  topN = topN, permuteNum = permutations)
     },
     
