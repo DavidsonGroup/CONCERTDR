@@ -31,12 +31,14 @@ knitr::opts_chunk$set(
 This vignette walks through the complete signature-matching pipeline:
 
 1. Filter the CMap `siginfo_beta.txt` metadata to a relevant subset.
-2. Build a gene-expression reference matrix from the GCTX file.
-3. Score a disease signature against the reference.
-4. Inspect and compare results across methods.
+2. Prepare the query disease signature (from a file, data frame, or gene lists).
+3. Build a gene-expression reference matrix from the GCTX file.
+   *(This step can take a long time — the package will print a progress message.)*
+4. Score and inspect the disease signature against the reference.
 
-Steps 1–2 require the full CMap download and are shown with `eval=FALSE`.
-Steps 3–4 use the bundled example data and are fully executable.
+Step 1 requires the full CMap download and is shown with `eval=FALSE`.
+Step 3 also requires the full CMap download and is shown with `eval=FALSE`.
+Steps 2 and 4 use the bundled example data and are fully executable.
 
 ```{r load}
 library(CONCERTDR)
@@ -110,7 +112,66 @@ filtered_demo <- subset_siginfo_beta(
 filtered_demo[, c("sig_id", "cmap_name", "cell_iname", "pert_itime", "pert_idose")]
 ```
 
-# Step 2 — Build the Reference Matrix (Full CMap Data)
+# Step 2 — Prepare the Query Signature
+
+The query signature must contain at minimum two columns:
+
+- `Gene` — HGNC gene symbol (uppercase)
+- `log2FC` — log2 fold-change between disease and control
+
+Sort rows by `|log2FC|` descending so the highest-magnitude genes are
+considered first when `max_genes` is applied.
+
+## Loading a signature from a file
+
+```{r load-signature}
+sig_file  <- system.file("extdata", "example_signature.txt",
+                          package = "CONCERTDR")
+signature <- read.delim(sig_file)
+
+# Separate up- and down-regulated genes
+up_genes   <- signature$Gene[signature$log2FC > 0]
+down_genes <- signature$Gene[signature$log2FC < 0]
+
+cat("Up-regulated genes:  ", length(up_genes),   "\n")
+cat("Down-regulated genes:", length(down_genes),  "\n")
+
+# Preview the most-extreme genes
+head(signature[order(-abs(signature$log2FC)), ], 8)
+```
+
+## Passing a signature as a data frame
+
+You can pass a `data.frame` directly to `process_signature_with_df()` and
+`extract_signature_zscores()` instead of a file path — this is convenient
+when the signature is already in memory (e.g.\ from a differential-expression
+analysis):
+```{r sig-df-demo}
+# 'signature' is already a data.frame from the previous chunk
+head(signature)
+# We will pass it directly in Step 4 below
+```
+
+## Creating a signature from gene lists
+
+If you only have up- and down-regulated gene lists (without fold-changes),
+`create_signature_from_gene_lists()` builds a minimal signature data frame
+with default values of 1 and −1:
+
+```{r gene-list-signature}
+sig_from_lists <- create_signature_from_gene_lists(
+  up_genes   = c("BRCA1", "TP53", "MYC"),
+  down_genes = c("RB1", "PTEN", "APC")
+)
+sig_from_lists
+```
+
+# Step 3 — Build the Reference Matrix (Full CMap Data)
+
+> **Note:** This step reads a large GCTX file and can take a long time
+> (minutes to tens of minutes depending on the number of signatures and your
+> hardware). The package will print a progress message — please do not
+> interrupt the process.
 
 `extract_cmap_data_from_siginfo()` reads the GCTX file for only the signature
 IDs present in your filtered siginfo, returning a genes × signatures data
@@ -144,32 +205,6 @@ reference_df$gene_symbol <- rownames(reference_df)
 
 cat("Reference:", nrow(reference_df), "genes ×",
     ncol(reference_df) - 1, "signatures\n")
-```
-
-# Step 3 — Prepare the Query Signature
-
-The query signature file must contain at minimum:
-
-- `Gene` — HGNC gene symbol (uppercase)
-- `log2FC` — log2 fold-change between disease and control
-
-Sort rows by `|log2FC|` descending so the highest-magnitude genes are
-considered first when `max_genes` is applied.
-
-```{r load-signature}
-sig_file  <- system.file("extdata", "example_signature.txt",
-                          package = "CONCERTDR")
-signature <- read.delim(sig_file)
-
-# Separate up- and down-regulated genes
-up_genes   <- signature$Gene[signature$log2FC > 0]
-down_genes <- signature$Gene[signature$log2FC < 0]
-
-cat("Up-regulated genes:  ", length(up_genes),   "\n")
-cat("Down-regulated genes:", length(down_genes),  "\n")
-
-# Preview the most-extreme genes
-head(signature[order(-abs(signature$log2FC)), ], 8)
 ```
 
 # Step 4 — Run Signature Matching
@@ -259,7 +294,7 @@ results_saved <- process_signature_with_df(
 )
 ```
 
-# Step 5 — Choosing `topN` and `permutations`
+## Choosing `topN` and `permutations`
 
 The `topN` parameter controls how many top- and bottom-ranked genes from each
 reference profile are used by `xcos` and `xsum`. For the full 978 landmark

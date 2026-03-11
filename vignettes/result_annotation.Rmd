@@ -336,7 +336,16 @@ filtered_siginfo <- subset_siginfo_beta(
   )
 )
 
-# 3. Build reference matrix
+# 3. Prepare your disease signature
+# Option A: read from a file
+signature <- read.delim("my_disease_signature.txt")
+# Option B: create from gene lists
+# signature <- create_signature_from_gene_lists(
+#   up_genes   = c("TP53", "MYC"),
+#   down_genes = c("EGFR", "KRAS")
+# )
+
+# 4. Build reference matrix (this step may take a long time)
 reference_df <- extract_cmap_data_from_siginfo(
   siginfo_file  = filtered_siginfo,
   geneinfo_file = getOption("CONCERTDR.geneinfo_file"),
@@ -345,9 +354,9 @@ reference_df <- extract_cmap_data_from_siginfo(
   landmark       = TRUE
 )
 
-# 4. Score
+# 5. Score
 results <- process_signature_with_df(
-  signature_file = "my_disease_signature.txt",
+  signature_file = signature,   # data.frame or file path
   reference_df   = reference_df,
   methods        = c("xsum", "ks"),
   topN           = 400,
@@ -355,7 +364,7 @@ results <- process_signature_with_df(
   save_files     = FALSE
 )
 
-# 5. Annotate
+# 6. Annotate
 views <- annotate_drug_results(
   results_df     = results$results$xsum,
   sig_info_file  = filtered_siginfo,

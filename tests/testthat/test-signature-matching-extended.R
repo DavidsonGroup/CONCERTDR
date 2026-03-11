@@ -397,3 +397,112 @@ test_that("plot errors when no results exist", {
   res <- structure(list(results = list()), class = "cmap_signature_result")
   expect_error(plot(res), "No results available")
 })
+
+# ── create_signature_from_gene_lists ─────────────────────────────────────────
+
+test_that("create_signature_from_gene_lists returns correct data frame", {
+  sig <- create_signature_from_gene_lists(
+    up_genes   = c("TP53", "MYC"),
+    down_genes = c("EGFR", "KRAS")
+  )
+  expect_s3_class(sig, "data.frame")
+  expect_named(sig, c("Gene", "log2FC"))
+  expect_equal(nrow(sig), 4)
+  expect_true(all(sig$log2FC[sig$Gene %in% c("TP53", "MYC")] == 1))
+  expect_true(all(sig$log2FC[sig$Gene %in% c("EGFR", "KRAS")] == -1))
+})
+
+test_that("create_signature_from_gene_lists accepts custom values", {
+  sig <- create_signature_from_gene_lists(
+    up_genes   = c("A", "B"),
+    down_genes = c("C"),
+    up_value   = 2.5,
+    down_value = -3
+  )
+  expect_equal(sig$log2FC[sig$Gene == "A"], 2.5)
+  expect_equal(sig$log2FC[sig$Gene == "C"], -3)
+})
+
+test_that("create_signature_from_gene_lists errors when both lists are empty", {
+  expect_error(
+    create_signature_from_gene_lists(up_genes = character(0), down_genes = character(0)),
+    "non-empty"
+  )
+})
+
+test_that("create_signature_from_gene_lists warns on overlap", {
+  expect_warning(
+    create_signature_from_gene_lists(
+      up_genes   = c("TP53", "MYC"),
+      down_genes = c("MYC", "EGFR")
+    ),
+    "both up and down"
+  )
+})
+
+test_that("create_signature_from_gene_lists warns when only up_genes provided", {
+  expect_warning(
+    create_signature_from_gene_lists(
+      up_genes   = c("TP53"),
+      down_genes = character(0)
+    ),
+    "No down-regulated"
+  )
+})
+
+test_that("create_signature_from_gene_lists removes duplicates", {
+  sig <- create_signature_from_gene_lists(
+    up_genes   = c("TP53", "TP53", "MYC"),
+    down_genes = c("EGFR", "EGFR")
+  )
+  expect_equal(nrow(sig), 3)
+})
+
+# ── process_signature_with_df with data.frame input ──────────────────────────
+
+test_that("process_signature_with_df accepts a data.frame instead of file path", {
+  skip_if_no_example()
+  sig_data <- read.delim(sig_file())
+  res <- process_signature_with_df(
+    signature_file = sig_data,
+    reference_df   = ref_df(),
+    permutations   = 5,
+    methods        = "ks",
+    save_files     = FALSE
+  )
+  expect_s3_class(res, "cmap_signature_result")
+  expect_equal(res$settings$signature_file, "(data.frame)")
+})
+
+test_that("process_signature_with_df with gene-list-derived data.frame works", {
+  skip_if_no_example()
+  # Get gene names from the reference to ensure overlap
+  rdf <- ref_df()
+  gene_names <- rownames(rdf)
+  sig <- create_signature_from_gene_lists(
+    up_genes   = gene_names[1:5],
+    down_genes = gene_names[6:10]
+  )
+  res <- process_signature_with_df(
+    signature_file = sig,
+    reference_df   = rdf,
+    permutations   = 5,
+    methods        = "ks",
+    save_files     = FALSE
+  )
+  expect_s3_class(res, "cmap_signature_result")
+  expect_gt(nrow(res$results$ks), 0)
+})
+
+test_that("process_signature_with_df errors on invalid signature_file type", {
+  expect_error(
+    process_signature_with_df(
+      signature_file = 42,
+      reference_df   = ref_df(),
+      permutations   = 5,
+      methods        = "ks",
+      save_files     = FALSE
+    ),
+    "file path.*data.frame"
+  )
+})

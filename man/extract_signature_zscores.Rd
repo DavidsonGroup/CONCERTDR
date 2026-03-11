@@ -26,7 +26,7 @@ extract_signature_zscores(
 \item{results_df}{Data frame containing at least perturbation id and score
 columns.}
 
-\item{signature_file}{Path to signature file with gene and log2FC columns.}
+\\item{signature_file}{Path to a signature file with gene and log2FC columns,\n  or a data frame with \\code{Gene} and \\code{log2FC} columns.}
 
 \item{reference_df}{Optional reference matrix with genes as rows and
 perturbation ids as columns. If supplied, z-scores are taken directly from

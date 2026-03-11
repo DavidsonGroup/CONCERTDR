@@ -9,7 +9,8 @@
 #'
 #' @param results_df Data frame containing at least perturbation id and score
 #'   columns.
-#' @param signature_file Path to signature file with gene and log2FC columns.
+#' @param signature_file Path to a signature file with gene and log2FC columns,
+#'   or a data frame with \code{Gene} and \code{log2FC} columns.
 #' @param reference_df Optional reference matrix with genes as rows and
 #'   perturbation ids as columns. If supplied, z-scores are taken directly from
 #'   this object and no GCTX file is required.
@@ -86,7 +87,16 @@ extract_signature_zscores <- function(results_df,
     }
   }
   if (!score_col %in% names(results_df)) stop("results_df must contain score_col: ", score_col)
-  if (!file.exists(signature_file)) stop("signature_file not found: ", signature_file)
+
+  # Handle signature input: data.frame or file path
+  if (is.data.frame(signature_file)) {
+    sig_is_df <- TRUE
+  } else if (is.character(signature_file) && length(signature_file) == 1L) {
+    sig_is_df <- FALSE
+    if (!file.exists(signature_file)) stop("signature_file not found: ", signature_file)
+  } else {
+    stop("signature_file must be either a file path (character) or a data.frame with 'Gene' and 'log2FC' columns.")
+  }
   
   first_existing <- function(candidates) {
     candidates <- as.character(candidates)
@@ -204,11 +214,15 @@ extract_signature_zscores <- function(results_df,
   }
   
   # signature genes and order (down then up)
-  sig <- if (requireNamespace("data.table", quietly = TRUE)) {
-    data.table::fread(signature_file, data.table = FALSE)
+  if (sig_is_df) {
+    sig <- signature_file
   } else {
-    utils::read.table(signature_file, header = TRUE, sep = "", stringsAsFactors = FALSE,
-                      quote = "", comment.char = "", fill = TRUE)
+    sig <- if (requireNamespace("data.table", quietly = TRUE)) {
+      data.table::fread(signature_file, data.table = FALSE)
+    } else {
+      utils::read.table(signature_file, header = TRUE, sep = "", stringsAsFactors = FALSE,
+                        quote = "", comment.char = "", fill = TRUE)
+    }
   }
   names(sig) <- trimws(names(sig))
   gene_col   <- if ("Gene"   %in% names(sig)) "Gene"   else names(sig)[1]
@@ -351,7 +365,8 @@ extract_signature_zscores <- function(results_df,
 #'
 #' @param results_df Data frame (typically \code{tech_view_all}) containing at
 #'   least perturbation id and score columns.
-#' @param signature_file Path to signature file with gene and log2FC columns.
+#' @param signature_file Path to a signature file with gene and log2FC columns,
+#'   or a data frame with \code{Gene} and \code{log2FC} columns.
 #' @param reference_df Optional reference matrix with genes as rows and
 #'   perturbation ids as columns. If supplied, no GCTX file is needed and the
 #'   heatmap is built directly from this matrix.

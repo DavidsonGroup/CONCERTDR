@@ -38,12 +38,15 @@ The main steps of the workflow are:
 
 1. **Filter** the CMap signature metadata (`siginfo_beta.txt`) to the
    cell lines and perturbation types relevant to your disease context.
-2. **Build** a reference expression matrix from the CMap GCTX file.
-3. **Score** your disease signature against the reference matrix using one or
-   more connectivity scoring methods.
-4. **Annotate** hits with compound metadata (mechanism of action, clinical
-   phase, targets).
-5. **Visualise** the top hits as a directional barcode heatmap.
+2. **Prepare** your disease signature — load a differential-expression table
+   or convert gene lists into a signature data frame.
+3. **Build** a reference expression matrix from the CMap GCTX file.
+   *(This step can take a long time for large datasets — the package will
+   print a progress message so you know it is still working.)*
+4. **Score, Annotate & Visualise** — match your signature against the
+   reference matrix, annotate hits with compound metadata (mechanism of
+   action, clinical phase, targets), and visualise the top hits as a
+   directional barcode heatmap.
 
 All steps in this vignette use the small example dataset bundled with the
 package, so no external downloads are required to run the code.
@@ -109,6 +112,32 @@ head(signature, 10)
 ```{r signature-summary}
 cat("Up-regulated genes:  ", sum(signature$log2FC > 0), "\n")
 cat("Down-regulated genes:", sum(signature$log2FC < 0), "\n")
+```
+
+You can also pass the signature as a data frame directly — there is no need
+to save it to disk first:
+
+```{r use-df-signature, eval=FALSE}
+results <- process_signature_with_df(
+  signature_file = signature,    # data.frame, not a file path
+  reference_df   = reference_df,
+  methods        = "ks"
+)
+```
+
+### Creating a signature from gene lists
+
+If you only have lists of up- and down-regulated genes (without numeric
+fold-change values), use `create_signature_from_gene_lists()` to build a
+compatible signature data frame.  Up-regulated genes receive a value of
+`+1` and down-regulated genes receive `-1` by default.
+
+```{r gene-list-signature}
+sig_from_lists <- create_signature_from_gene_lists(
+  up_genes   = c("TP53", "MYC", "BRCA1"),
+  down_genes = c("EGFR", "VEGFA", "KRAS")
+)
+sig_from_lists
 ```
 
 ## The reference matrix
@@ -229,7 +258,8 @@ after free registration.
 For detailed walkthroughs of each stage:
 
 - **Signature Matching** vignette — full workflow from `subset_siginfo_beta()`
-  through `process_signature_with_df()`.
+  through `process_signature_with_df()`, including preparing the query
+  signature with `create_signature_from_gene_lists()`.
 - **Result Annotation** vignette — integrating CMap compound metadata with
   `annotate_drug_results()`.
 - **Visualization** vignette — directional barcode heatmaps with

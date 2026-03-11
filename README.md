@@ -156,11 +156,12 @@ The `pert_type` values are defined by LINCS2020 as follows:
 ![image](https://github.com/user-attachments/assets/02ef148d-736b-4c02-92b5-5fde0935db17)
 
 
-### Step 2 — Signature file
+### Step 2 — Prepare the query signature
 
-A tab-delimited file with `Gene` (HGNC symbol) and `log2FC`. Positive = up-regulated,
-negative = down-regulated. Rows should be sorted by `|log2FC|` descending; `max_genes`
-in later steps controls how many are used.
+The signature needs a `Gene` (HGNC symbol) and `log2FC` column. You can provide
+it as a **file path** or as an in-memory **data frame**.
+
+**Option A — from a file:**
 
 ```text
 Gene    log2FC
@@ -170,7 +171,32 @@ MYC      3.2
 BRCA1   -2.1
 ```
 
+**Option B — from a data frame already in R:**
+
+```r
+# If 'signature' is already a data.frame with Gene + log2FC columns,
+# pass it directly — no need to write to disk first.
+signature <- data.frame(
+  Gene   = c("STAT3", "TP53", "MYC", "BRCA1"),
+  log2FC = c(2.5, -1.8, 3.2, -2.1)
+)
+```
+
+**Option C — from gene lists (no fold-changes):**
+
+```r
+signature <- create_signature_from_gene_lists(
+  up_genes   = c("STAT3", "MYC"),
+  down_genes = c("TP53", "BRCA1")
+)
+# Up genes get log2FC = 1, down genes get log2FC = -1
+```
+
 ### Step 3 — Build the reference matrix
+
+> **Note:** This step reads the large GCTX file and can take a long time
+> (minutes to tens of minutes). The package will print a progress message —
+> please do not interrupt the process.
 
 ```r
 reference_df <- extract_cmap_data_from_siginfo(
@@ -182,12 +208,16 @@ reference_df <- extract_cmap_data_from_siginfo(
 )
 ```
 
-### Step 4 — Score the signature
+### Step 4 — Score, annotate, and visualise
+
+#### 4a. Score the signature
+
+`signature_file` accepts a file path **or** a data frame:
 
 ```r
 results <- process_signature_with_df(
   reference_df   = reference_df,
-  signature_file = "signature.txt",
+  signature_file = signature,          # data.frame or file path
   output_dir     = "results",
   methods        = c("xsum", "xcos", "zhang", "gsea0", "gsea1", "gsea2", "ks"),
   topN           = 400,    # genes used by XCos/XSum
@@ -210,7 +240,7 @@ Available methods:
 | `gsea0` / `gsea1` / `gsea2` | GSEA (weight 0 / 1 / 2) |
 | `zhang` | Zhang et al. |
 
-### Step 5 — Annotate
+#### 4b. Annotate
 
 Joins `siginfo` and `compoundinfo` to add drug names, MoA, dose, cell line, etc.
 `filtered_siginfo` is already in memory from Step 1 — no file re-read.
@@ -224,19 +254,19 @@ views <- annotate_drug_results(
   write_outputs  = TRUE
 )
 
-head(views$tech_view_all)        # per-signature scores — pass to Step 6
+head(views$tech_view_all)        # per-signature scores
 head(views$wetlab_drug_view)     # drug-level summary
 head(views$drug_context_summary) # drug × cell line breakdown
 ```
 
-### Step 6 — Extract z-scores
+#### 4c. Extract z-scores
 
 Reads the GCTX once. Save the result and reuse it rather than repeating this call.
 
 ```r
 z <- extract_signature_zscores(
   results_df     = views$tech_view_all,
-  signature_file = "signature.txt",
+  signature_file = signature,          # data.frame or file path
   max_genes      = 100,
   max_perts      = 60,
   output_zscores = NULL                     # set a path if you want to save TSV
@@ -250,7 +280,7 @@ The returned list contains:
 - `logfc_map` — named vector of log2FC values
 - `sig_ids` / `sig_labels` — CMap identifiers and readable labels
 
-### Step 7 — Plot
+#### 4d. Plot
 
 Pass `precomputed = z` to skip any file I/O on repeat calls.
 
@@ -292,6 +322,7 @@ or set explicitly with `width`, `height`, `dpi`.
 | Function | Description |
 |---|---|
 | `process_signature_with_df()` | Score a signature against an in-memory reference |
+| `create_signature_from_gene_lists()` | Build a signature data frame from up/down gene lists |
 
 ### Result annotation
 

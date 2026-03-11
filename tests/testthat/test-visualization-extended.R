@@ -98,6 +98,35 @@ test_that("extract_signature_zscores errors when no signature genes match refere
   )
 })
 
+# ── extract_signature_zscores: data.frame signature input ─────────────────────
+
+test_that("extract_signature_zscores accepts a data.frame for signature_file", {
+  skip_if_no_example()
+  sig_data <- read.delim(sig_file())
+  z <- extract_signature_zscores(
+    results_df     = results_df(),
+    signature_file = sig_data,
+    reference_df   = ref_df(),
+    verbose        = FALSE
+  )
+  expect_type(z, "list")
+  expect_true("z_plot" %in% names(z))
+  expect_gt(ncol(z$z_plot), 0)
+})
+
+test_that("extract_signature_zscores errors on invalid signature_file type", {
+  skip_if_no_example()
+  expect_error(
+    extract_signature_zscores(
+      results_df     = results_df(),
+      signature_file = 42,
+      reference_df   = ref_df(),
+      verbose        = FALSE
+    ),
+    "file path.*data.frame"
+  )
+})
+
 # ── extract_signature_zscores: return structure ───────────────────────────────
 
 test_that("extract_signature_zscores returns a list with five named elements", {

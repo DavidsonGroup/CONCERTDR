@@ -1,9 +1,85 @@
 # Suppress R CMD check notes for ggplot2 NSE column names
 utils::globalVariables(c("compound", "Score", "pValue"))
 
+#' Create a Signature Data Frame from Gene Lists
+#'
+#' Converts separate lists of up-regulated and down-regulated genes into a
+#' signature data frame compatible with \code{\link{process_signature_with_df}}
+#' and other CONCERTDR functions.  This is a convenience wrapper for users who
+#' only have gene lists (e.g.\ from a pathway database) rather than continuous
+#' fold-change values.
+#'
+#' @param up_genes Character vector of up-regulated gene symbols.
+#' @param down_genes Character vector of down-regulated gene symbols.
+#' @param up_value Numeric value to assign to up-regulated genes (default: 1).
+#' @param down_value Numeric value to assign to down-regulated genes (default: -1).
+#'
+#' @return A data frame with columns \code{Gene} and \code{log2FC}, suitable for
+#'   use as the \code{signature_file} argument in
+#'   \code{\link{process_signature_with_df}} and
+#'   \code{\link{extract_signature_zscores}}.
+#'
+#' @examples
+#' sig_df <- create_signature_from_gene_lists(
+#'   up_genes   = c("TP53", "MYC", "BRCA1"),
+#'   down_genes = c("EGFR", "VEGFA", "KRAS")
+#' )
+#' head(sig_df)
+#'
+#' @export
+create_signature_from_gene_lists <- function(up_genes, down_genes,
+                                             up_value = 1, down_value = -1) {
+  if (missing(up_genes))   up_genes   <- character(0)
+  if (missing(down_genes)) down_genes <- character(0)
+
+  if (length(up_genes) == 0 && length(down_genes) == 0) {
+    stop("At least one of 'up_genes' or 'down_genes' must be non-empty")
+  }
+  if (length(up_genes) == 0) {
+    warning("No up-regulated genes provided. The signature will only contain down-regulated genes.")
+  }
+  if (length(down_genes) == 0) {
+    warning("No down-regulated genes provided. The signature will only contain up-regulated genes.")
+  }
+
+  # Remove duplicates
+  up_genes   <- unique(as.character(up_genes))
+  down_genes <- unique(as.character(down_genes))
+
+  # Check for overlap
+  overlap <- intersect(up_genes, down_genes)
+  if (length(overlap) > 0) {
+    warning("Found ", length(overlap), " gene(s) in both up and down lists: ",
+            paste(utils::head(overlap, 5), collapse = ", "),
+            if (length(overlap) > 5) "..." else "",
+            ". These genes will be removed from the down-regulated list.")
+    down_genes <- setdiff(down_genes, overlap)
+  }
+
+  sig_df <- data.frame(
+    Gene   = c(up_genes, down_genes),
+    log2FC = c(rep(up_value, length(up_genes)),
+               rep(down_value, length(down_genes))),
+    stringsAsFactors = FALSE
+  )
+
+  # Sort by absolute log2FC descending
+  sig_df <- sig_df[order(-abs(sig_df$log2FC)), , drop = FALSE]
+  rownames(sig_df) <- NULL
+
+  message(sprintf("Created signature with %d up-regulated and %d down-regulated genes",
+                  length(up_genes), length(down_genes)))
+
+  return(sig_df)
+}
+
 #' Process drug response signatures against reference data in a dataframe
 #'
-#' @param signature_file Path to signature gene list with log2FC values
+#' @param signature_file Path to a signature gene list file with log2FC values,
+#'   or a data frame with columns \code{Gene} and \code{log2FC}.
+#'   When a data frame is supplied the \code{read_method} argument is ignored.
+#'   You can create a suitable data frame from gene lists using
+#'   \code{\link{create_signature_from_gene_lists}}.
 #' @param reference_df Dataframe containing reference data (combined across all conditions)
 #' @param output_dir Directory for output files (default: "results")
 #' @param permutations Number of permutations for statistical testing (default: 100)
@@ -38,6 +114,16 @@ utils::globalVariables(c("compound", "Score", "pValue"))
 #' )
 #' summary(results, top_n = 3)
 #'
+#' # You can also pass a data.frame directly:
+#' sig_df <- read.delim(sig_file)
+#' results2 <- process_signature_with_df(
+#'   signature_file = sig_df,
+#'   reference_df = ref_df,
+#'   permutations = 10,
+#'   methods = "ks",
+#'   save_files = FALSE
+#' )
+#'
 #' @export
 process_signature_with_df <- function(signature_file, reference_df, output_dir = "results",
                                       permutations = 100, methods = c("ks", "xcos", "xsum", "gsea0",
@@ -52,29 +138,41 @@ process_signature_with_df <- function(signature_file, reference_df, output_dir =
   # Record start time for performance tracking
   start_time <- Sys.time()
   
-  # Read the signature file
-  message("Reading signature data from ", signature_file)
-  tryCatch({
-    if (read_method == "auto") {
-      # Auto-detect best method
-      if (requireNamespace("data.table", quietly = TRUE)) {
+  # Handle signature input: data.frame or file path
+  if (is.data.frame(signature_file)) {
+    gene_data <- signature_file
+    signature_label <- "(data.frame)"
+    message("Using signature data from data.frame")
+  } else if (is.character(signature_file) && length(signature_file) == 1L) {
+    signature_label <- signature_file
+    message("Reading signature data from ", signature_file)
+    if (!file.exists(signature_file)) {
+      stop("Signature file not found: ", signature_file)
+    }
+    tryCatch({
+      if (read_method == "auto") {
+        # Auto-detect best method
+        if (requireNamespace("data.table", quietly = TRUE)) {
+          gene_data <- data.table::fread(signature_file, header = TRUE,
+                                         stringsAsFactors = FALSE, data.table = FALSE)
+        } else {
+          gene_data <- utils::read.delim(signature_file, header = TRUE, sep = "\t",
+                                         stringsAsFactors = FALSE, comment.char = "")
+        }
+      } else if (read_method == "fread" && requireNamespace("data.table", quietly = TRUE)) {
         gene_data <- data.table::fread(signature_file, header = TRUE,
                                        stringsAsFactors = FALSE, data.table = FALSE)
       } else {
+        # Default to read.table
         gene_data <- utils::read.delim(signature_file, header = TRUE, sep = "\t",
                                        stringsAsFactors = FALSE, comment.char = "")
       }
-    } else if (read_method == "fread" && requireNamespace("data.table", quietly = TRUE)) {
-      gene_data <- data.table::fread(signature_file, header = TRUE,
-                                     stringsAsFactors = FALSE, data.table = FALSE)
-    } else {
-      # Default to read.table
-      gene_data <- utils::read.delim(signature_file, header = TRUE, sep = "\t",
-                                     stringsAsFactors = FALSE, comment.char = "")
-    }
-  }, error = function(e) {
-    stop("Error reading signature file: ", e$message)
-  })
+    }, error = function(e) {
+      stop("Error reading signature file: ", e$message)
+    })
+  } else {
+    stop("signature_file must be either a file path (character) or a data.frame with 'Gene' and 'log2FC' columns.")
+  }
   
   # Check if required columns exist
   if (!all(c("Gene", "log2FC") %in% colnames(gene_data))) {
@@ -131,7 +229,7 @@ process_signature_with_df <- function(signature_file, reference_df, output_dir =
   
   # Store metadata about the analysis
   settings <- list(
-    signature_file = signature_file,
+    signature_file = signature_label,
     permutations = permutations,
     methods = methods,
     topN = topN,
@@ -576,7 +674,8 @@ plot.cmap_signature_result <- function(x, method = NULL, plot_type = "scores", t
 #' Complete workflow from configuration to signature matching
 #'
 #' @param config_file Path to configuration file with selected parameters
-#' @param signature_file Path to signature gene list with log2FC values
+#' @param signature_file Path to signature gene list with log2FC values,
+#'   or a data frame with \code{Gene} and \code{log2FC} columns.
 #' @param geneinfo_file Path to the gene info file
 #' @param siginfo_file Path to the signature info file
 #' @param gctx_file Path to the GCTX file

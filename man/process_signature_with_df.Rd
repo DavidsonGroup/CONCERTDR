@@ -16,7 +16,11 @@ process_signature_with_df(
 )
 }
 \arguments{
-\item{signature_file}{Path to signature gene list with log2FC values}
+\item{signature_file}{Path to a signature gene list file with log2FC values,
+  or a data frame with columns \code{Gene} and \code{log2FC}.
+  When a data frame is supplied the \code{read_method} argument is ignored.
+  You can create a suitable data frame from gene lists using
+  \code{\link{create_signature_from_gene_lists}}.}
 
 \item{reference_df}{Dataframe containing reference data (combined across all conditions)}
 
@@ -61,5 +65,15 @@ results <- process_signature_with_df(
   save_files = FALSE
 )
 summary(results, top_n = 3)
+
+# You can also pass a data.frame directly:
+sig_df <- read.delim(sig_file)
+results2 <- process_signature_with_df(
+  signature_file = sig_df,
+  reference_df = ref_df,
+  permutations = 10,
+  methods = "ks",
+  save_files = FALSE
+)
 
 }

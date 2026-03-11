@@ -185,7 +185,14 @@ extract_cmap_data_from_siginfo <- function(siginfo_file = "siginfo_beta.txt",
   }
   
   # Parse the gctx file using all signature IDs
-  if (verbose) message("\nExtracting data from GCTX file...")
+  if (verbose) {
+    message("\n", paste(rep("=", 60), collapse = ""))
+    message("NOTE: Extracting data from GCTX file...")
+    message("This step may take a long time depending on the number of")
+    message("signatures (", length(all_cids), ") and the size of the GCTX file.")
+    message("Please be patient and do not interrupt the process.")
+    message(paste(rep("=", 60), collapse = ""), "\n")
+  }
   
   mat <- tryCatch({
     fast_parse_gctx(
