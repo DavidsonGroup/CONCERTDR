@@ -18,14 +18,22 @@ Data frame of combinations
 Creates a data frame of combinations based on the selections from the interactive config functions
 }
 \examples{
-\dontrun{
-# GUI version (if available)
-selections <- create_interactive_config("databases/siginfo_beta.txt")
-# OR console version
-selections <- create_console_config("databases/siginfo_beta.txt")
-
-# Generate combinations
-combinations <- generate_combinations_from_selections(selections)
-}
+selections <- list(
+  selected = list(
+    times = "24 h",
+    doses = "1 uM",
+    cells = "K562"
+  ),
+  all_options = list(
+    times = c("6 h", "24 h"),
+    doses = c("1 uM", "10 uM"),
+    cells = c("K562", "HL60")
+  )
+)
+combinations <- generate_combinations_from_selections(
+  selections,
+  verbose = FALSE
+)
+combinations
 
 }

@@ -16,12 +16,18 @@
 #' @return A list with selected parameters (times, doses, cells) and the config file path
 #'
 #' @examples
-#' \dontrun{
-#' # Create interactive configuration
-#' selections <- create_interactive_config("databases/siginfo_beta.txt")
+#' siginfo_file <- system.file("extdata", "example_siginfo.txt",
+#'                             package = "CONCERTDR")
+#' file.exists(siginfo_file)
 #'
-#' # Use selections for further analysis
-#' combinations <- generate_combinations_from_selections(selections)
+#' if (interactive() && requireNamespace("tcltk", quietly = TRUE)) {
+#'   selections <- create_interactive_config(
+#'     siginfo_file = siginfo_file,
+#'     config_dir = tempdir(),
+#'     filter_quality = FALSE,
+#'     verbose = FALSE
+#'   )
+#'   names(selections)
 #' }
 #'
 #' @export
@@ -322,13 +328,16 @@ create_interactive_config <- function(siginfo_file,
 #' @return A list with selected parameters (times, doses, cells) and the config file path
 #'
 #' @examples
-#' \dontrun{
-#' # Create interactive console configuration
-#' selections <- create_console_config("databases/siginfo_beta.txt")
-#'
-#' # Use selections for further analysis
-#' combinations <- generate_combinations_from_selections(selections)
-#' }
+#' siginfo_file <- system.file("extdata", "example_siginfo.txt",
+#'                             package = "CONCERTDR")
+#' selections <- create_console_config(
+#'   siginfo_file = siginfo_file,
+#'   config_dir = tempdir(),
+#'   filter_quality = FALSE,
+#'   verbose = FALSE
+#' )
+#' names(selections)
+#' head(selections$selected$cells)
 #'
 #' @export
 create_console_config <- function(siginfo_file,
@@ -478,15 +487,23 @@ create_console_config <- function(siginfo_file,
 #' @return Data frame of combinations
 #'
 #' @examples
-#' \dontrun{
-#' # GUI version (if available)
-#' selections <- create_interactive_config("databases/siginfo_beta.txt")
-#' # OR console version
-#' selections <- create_console_config("databases/siginfo_beta.txt")
-#'
-#' # Generate combinations
-#' combinations <- generate_combinations_from_selections(selections)
-#' }
+#' selections <- list(
+#'   selected = list(
+#'     times = "24 h",
+#'     doses = "1 uM",
+#'     cells = "K562"
+#'   ),
+#'   all_options = list(
+#'     times = c("6 h", "24 h"),
+#'     doses = c("1 uM", "10 uM"),
+#'     cells = c("K562", "HL60")
+#'   )
+#' )
+#' combinations <- generate_combinations_from_selections(
+#'   selections,
+#'   verbose = FALSE
+#' )
+#' combinations
 #'
 #' @export
 generate_combinations_from_selections <- function(selections, verbose = TRUE) {
@@ -550,8 +567,21 @@ generate_combinations_from_selections <- function(selections, verbose = TRUE) {
 #' @return A list with workflow results
 #'
 #' @examples
-#' \dontrun{
-#' results <- interactive_cmap_setup()
+#' siginfo_file <- system.file("extdata", "example_siginfo.txt",
+#'                             package = "CONCERTDR")
+#' workflow_args <- list(
+#'   siginfo_file = siginfo_file,
+#'   geneinfo_file = "path/to/geneinfo_beta.txt",
+#'   gctx_file = "path/to/level5_beta_all_n1201944x12328.gctx"
+#' )
+#' names(workflow_args)
+#'
+#' if (interactive()) {
+#'   # interactive_cmap_setup(
+#'   #   siginfo_file = workflow_args$siginfo_file,
+#'   #   geneinfo_file = workflow_args$geneinfo_file,
+#'   #   gctx_file = workflow_args$gctx_file
+#'   # )
 #' }
 #'
 #' @export

@@ -34,8 +34,21 @@ Provides a user-friendly interface to configure and run the CMap workflow.
 Tries to use the GUI interface if available, falls back to console version if not.
 }
 \examples{
-\dontrun{
-results <- interactive_cmap_setup()
+siginfo_file <- system.file("extdata", "example_siginfo.txt",
+                            package = "CONCERTDR")
+workflow_args <- list(
+  siginfo_file = siginfo_file,
+  geneinfo_file = "path/to/geneinfo_beta.txt",
+  gctx_file = "path/to/level5_beta_all_n1201944x12328.gctx"
+)
+names(workflow_args)
+
+if (interactive()) {
+  # interactive_cmap_setup(
+  #   siginfo_file = workflow_args$siginfo_file,
+  #   geneinfo_file = workflow_args$geneinfo_file,
+  #   gctx_file = workflow_args$gctx_file
+  # )
 }
 
 }

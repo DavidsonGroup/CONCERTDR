@@ -36,18 +36,21 @@ Invisibly returns vector of output files
 Process combinations by extracting data for each
 }
 \examples{
-\dontrun{
-# First create a configuration file
-extract_cmap_parameters("databases/siginfo_beta.txt")
-# Edit the configuration file as needed
+combinations <- data.frame(
+  itime = "24 h",
+  idose = "1 uM",
+  cell = "K562",
+  stringsAsFactors = FALSE
+)
+combinations
 
-# Then generate combinations and process them
-combinations <- generate_combinations_from_config("conf/cmap_options.conf")
-process_combinations(combinations,
-                     output_dir = "output",
-                     geneinfo_file = "databases/geneinfo_beta.txt",
-                     siginfo_file = "databases/siginfo_beta.txt",
-                     gctx_file = "databases/level5_beta_trt_cp_n720216x12328.gctx")
-}
+# With real CMap files available locally, run:
+# process_combinations(
+#   combinations = combinations,
+#   output_dir = tempdir(),
+#   geneinfo_file = "path/to/geneinfo_beta.txt",
+#   siginfo_file = "path/to/siginfo_beta.txt",
+#   gctx_file = "path/to/level5_beta_all_n1201944x12328.gctx"
+# )
 
 }

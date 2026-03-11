@@ -32,12 +32,15 @@ select CMap experimental parameters (time points, dosages, cell lines).
 This is a fallback option when the GUI version is not available.
 }
 \examples{
-\dontrun{
-# Create interactive console configuration
-selections <- create_console_config("databases/siginfo_beta.txt")
-
-# Use selections for further analysis
-combinations <- generate_combinations_from_selections(selections)
-}
+siginfo_file <- system.file("extdata", "example_siginfo.txt",
+                            package = "CONCERTDR")
+selections <- create_console_config(
+  siginfo_file = siginfo_file,
+  config_dir = tempdir(),
+  filter_quality = FALSE,
+  verbose = FALSE
+)
+names(selections)
+head(selections$selected$cells)
 
 }

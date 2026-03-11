@@ -32,3 +32,29 @@ List of processed files (invisibly)
 \description{
 Process Multiple Combinations of Time, Dose, and Cell Line
 }
+\examples{
+combinations <- data.frame(
+  itime = "24 h",
+  idose = "1 uM",
+  cell = "K562",
+  stringsAsFactors = FALSE
+)
+combinations_file <- tempfile(fileext = ".tsv")
+utils::write.table(
+  combinations,
+  combinations_file,
+  sep = "\t",
+  row.names = FALSE,
+  quote = FALSE
+)
+file.exists(combinations_file)
+
+# With real CMap files available locally, run:
+# process_combinations_file(
+#   combinations_file = combinations_file,
+#   geneinfo_file = "path/to/geneinfo_beta.txt",
+#   siginfo_file = "path/to/siginfo_beta.txt",
+#   gctx_file = "path/to/level5_beta_all_n1201944x12328.gctx",
+#   output_dir = tempdir()
+# )
+}

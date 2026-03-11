@@ -36,12 +36,18 @@ This function requires the tcltk package, which is usually included with R.
 If the GUI version fails, you can use create_console_config() as an alternative.
 }
 \examples{
-\dontrun{
-# Create interactive configuration
-selections <- create_interactive_config("databases/siginfo_beta.txt")
+siginfo_file <- system.file("extdata", "example_siginfo.txt",
+                            package = "CONCERTDR")
+file.exists(siginfo_file)
 
-# Use selections for further analysis
-combinations <- generate_combinations_from_selections(selections)
+if (interactive() && requireNamespace("tcltk", quietly = TRUE)) {
+  selections <- create_interactive_config(
+    siginfo_file = siginfo_file,
+    config_dir = tempdir(),
+    filter_quality = FALSE,
+    verbose = FALSE
+  )
+  names(selections)
 }
 
 }

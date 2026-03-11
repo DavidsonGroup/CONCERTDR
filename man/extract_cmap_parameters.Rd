@@ -35,9 +35,15 @@ experimental parameters (time points, dosages, cell lines) and saves them to
 a configuration file for use in the DR pipeline.
 }
 \examples{
-\dontrun{
-# Extract parameters and write config
-params <- extract_cmap_parameters("databases/siginfo_beta.txt")
-}
+siginfo_file <- system.file("extdata", "example_siginfo.txt",
+                            package = "CONCERTDR")
+params <- extract_cmap_parameters(
+  siginfo_file = siginfo_file,
+  write_config = FALSE,
+  filter_quality = FALSE,
+  verbose = FALSE
+)
+names(params)
+params$cells
 
 }
