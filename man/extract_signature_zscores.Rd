@@ -14,7 +14,7 @@ extract_signature_zscores(
   data_dir = getOption("CONCERTDR.data_dir", NULL),
   selected_drug = NULL,
   selected_drug_col = NULL,
-  pert_id_col = "compound",
+  pert_id_col = "sig_id",
   score_col = "Score",
   max_genes = 100,
   max_perts = 60,
@@ -26,7 +26,8 @@ extract_signature_zscores(
 \item{results_df}{Data frame containing at least perturbation id and score
 columns.}
 
-\\item{signature_file}{Path to a signature file with gene and log2FC columns,\n  or a data frame with \\code{Gene} and \\code{log2FC} columns.}
+\item{signature_file}{Path to a signature file with gene and log2FC columns,
+or a data frame with \code{Gene} and \code{log2FC} columns.}
 
 \item{reference_df}{Optional reference matrix with genes as rows and
 perturbation ids as columns. If supplied, z-scores are taken directly from
@@ -44,7 +45,7 @@ this object and no GCTX file is required.}
 
 \item{selected_drug_col}{Column used with \code{selected_drug}.}
 
-\item{pert_id_col}{Perturbation id column (default: \code{"compound"}).}
+\item{pert_id_col}{Perturbation id column (default: \code{"sig_id"}).}
 
 \item{score_col}{Score column (default: \code{"Score"}).}
 

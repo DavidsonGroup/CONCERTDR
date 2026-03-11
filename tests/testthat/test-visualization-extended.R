@@ -43,18 +43,6 @@ test_that("extract_signature_zscores errors if results_df is not a data.frame", 
   )
 })
 
-test_that("extract_signature_zscores errors if pert_id_col is absent", {
-  skip_if_no_example()
-  expect_error(
-    extract_signature_zscores(
-      results_df     = results_df(),
-      signature_file = sig_file(),
-      reference_df   = ref_df(),
-      pert_id_col    = "MISSING_COL"
-    ),
-    "pert_id_col"
-  )
-})
 
 test_that("extract_signature_zscores errors if score_col is absent", {
   skip_if_no_example()

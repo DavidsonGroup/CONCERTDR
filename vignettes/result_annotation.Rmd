@@ -148,7 +148,7 @@ the master table used by downstream visualisation functions.
 tv <- views$tech_view_all
 # Key columns for drug repurposing interpretation
 tv[order(tv$Score),
-   c("compound", "display_name", "Score", "pAdjValue",
+   c("sig_id", "perturbation_name", "Score", "pAdjValue",
      "effect_direction", "cell_line", "time_h", "dose_uM",
      "moa", "target")]
 ```
@@ -178,8 +178,8 @@ Intended for biologists who want a concise hit list for follow-up experiments.
 
 ```{r wetlab-drug}
 views$wetlab_drug_view[,
-  c("display_name", "Score", "effect_direction",
-    "target", "moa", "phase")]
+  c("perturbation_name", "Score", "effect_direction",
+    "target", "moa")]
 ```
 
 ### Including dose in the drug view
@@ -197,7 +197,7 @@ views_with_dose <- annotate_drug_results(
   write_outputs          = FALSE,
   verbose                = FALSE
 )
-views_with_dose$wetlab_drug_view[, c("display_name", "Score", "dose_uM")]
+views_with_dose$wetlab_drug_view[, c("perturbation_name", "Score", "dose_uM")]
 ```
 
 ## `wetlab_gene_view` — Gene perturbation hits
@@ -220,7 +220,7 @@ score well across many contexts are generally more compelling candidates.
 
 ```{r drug-context}
 views$drug_context_summary[,
-  c("display_name", "best_score", "n_contexts",
+  c("perturbation_name", "best_score", "n_contexts",
     "n_cell_lines", "moa_status")]
 ```
 

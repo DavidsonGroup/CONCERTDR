@@ -14,7 +14,7 @@ plot_signature_direction_tile_barcode(
   data_dir = getOption("CONCERTDR.data_dir", NULL),
   selected_drug = NULL,
   selected_drug_col = NULL,
-  pert_id_col = "compound",
+  pert_id_col = "sig_id",
   score_col = "Score",
   max_genes = 100,
   max_perts = 60,
@@ -38,7 +38,8 @@ plot_signature_direction_tile_barcode(
 \item{results_df}{Data frame (typically \code{tech_view_all}) containing at
 least perturbation id and score columns.}
 
-\\item{signature_file}{Path to a signature file with gene and log2FC columns,\n  or a data frame with \\code{Gene} and \\code{log2FC} columns.}
+\item{signature_file}{Path to a signature file with gene and log2FC columns,
+or a data frame with \code{Gene} and \code{log2FC} columns.}
 
 \item{reference_df}{Optional reference matrix with genes as rows and
 perturbation ids as columns. If supplied, no GCTX file is needed and the
@@ -66,12 +67,12 @@ repeatedly passing full file paths.}
 \item{selected_drug}{Optional drug identifier to filter \code{results_df}
 before selecting perturbations.}
 
-\item{selected_drug_col}{Optional column used with \code{selected_drug}.
-If NULL, auto-detect from \code{display_name}, \code{pert_id},
-\code{cmap_name}, \code{pert_name}.}
+\item{selected_drug_col}{Optional column used with \\code{selected_drug}.
+If NULL, auto-detect from \\code{perturbation_name}, \\code{display_name},
+\\code{pert_id}, \\code{cmap_name}, \\code{pert_name}.}
 
 \item{pert_id_col}{Perturbation id column in \code{results_df}
-(default: \code{"compound"}, i.e. sig_id in CONCERTDR results).}
+(default: \code{"sig_id"}; falls back to \code{"compound"} for older results).}
 
 \item{score_col}{Score column in \code{results_df} (default: \code{"Score"}).}
 

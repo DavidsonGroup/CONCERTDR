@@ -8,6 +8,7 @@
   if (length(missing_packages) > 0) {
     missing_bioc <- intersect(missing_packages, c("rhdf5"))
     missing_cran <- setdiff(missing_packages, missing_bioc)
+    
     warning_msg <- "CONCERTDR depends on the following packages that are not installed: "
     
     if (length(missing_cran) > 0) {

@@ -66,16 +66,12 @@ process_combination <- function(combination, rid, genenames, sig_info,
   output_file <- file.path(output_dir, filename)
 
   if (length(cid) > 0) {
-    # Parse the gctx file using CmapR
-    pert_data <- cmapR::parse_gctx(
+       # Parse the gctx file
+    mat <- fast_parse_gctx(
       fname = gctx_file,
       cid = cid,
       rid = rid
     )
-
-    # Get the data matrix
-    mat <- cmapR::mat(pert_data)
-
     message(sprintf("Data dimensions: %d x %d", nrow(mat), ncol(mat)))
 
     if (nrow(mat) > 0) {
@@ -84,7 +80,7 @@ process_combination <- function(combination, rid, genenames, sig_info,
       rownames(df) <- genenames
 
       # Write to file
-      write.table(df, file = output_file, sep = "\t", quote = FALSE)
+      utils::write.table(df, file = output_file, sep = "\t", quote = FALSE)
       message(sprintf("Successfully wrote data to %s", output_file))
     } else {
       message(sprintf("No data found for this combination"))

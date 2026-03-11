@@ -82,7 +82,7 @@ test_that("tech_view_all contains score, effect_direction and display_name", {
   tv    <- views$tech_view_all
   expect_true("Score"            %in% names(tv))
   expect_true("effect_direction" %in% names(tv))
-  expect_true("display_name"     %in% names(tv))
+  expect_true("perturbation_name"     %in% names(tv))
 })
 
 test_that("wetlab_drug_view is de-duplicated to one row per drug", {

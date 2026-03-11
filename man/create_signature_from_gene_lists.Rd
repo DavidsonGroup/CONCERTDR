@@ -4,8 +4,12 @@
 \alias{create_signature_from_gene_lists}
 \title{Create a Signature Data Frame from Gene Lists}
 \usage{
-create_signature_from_gene_lists(up_genes, down_genes, up_value = 1,
-  down_value = -1)
+create_signature_from_gene_lists(
+  up_genes,
+  down_genes,
+  up_value = 1,
+  down_value = -1
+)
 }
 \arguments{
 \item{up_genes}{Character vector of up-regulated gene symbols.}
