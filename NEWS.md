@@ -1,3 +1,14 @@
+# CONCERTDR 0.99.0
+
+## Bioconductor submission
+
+* Prepared package metadata and documentation for initial Bioconductor
+  software package review.
+* Added build exclusions for repository-only top-level files via
+  `.Rbuildignore`.
+* Improved code style for BiocCheck readiness (e.g., `seq_len()` indexing and
+  simplified error-handling patterns in file readers).
+
 # CONCERTDR 0.5.0
 
 ## New features

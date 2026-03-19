@@ -1,11 +1,23 @@
 Package: CONCERTDR
 Type: Package
 Title: Drug Response Data Analysis Using CMap Database
-Version: 0.5.0
-Authors@R: person("Hengxin", "Pan",
-    email = "pan.h@wehi.edu.au",
-    role = c("aut", "cre"),
-    comment = c(ORCID = "0009-0004-1274-1612"))
+Version: 0.99.0
+Authors@R: c(
+    person("Hengxin", "Pan",
+        email = "pan.h@wehi.edu.au",
+        role = c("aut", "cre"),
+        comment = c(ORCID = "0009-0004-1274-1612")),
+    person("Chin Wee", "Tan",
+        email = "cwtan@wehi.edu.au",
+        role = "aut",
+        comment = c(ORCID = "0000-0001-9695-7218")),
+    person("Gad", "Abraham",
+        role = "aut"),
+    person("Nadia", "Davidson",
+        email = "davidson.n@wehi.edu.au",
+        role = "aut",
+        comment = c(ORCID = "0000-0002-8461-7467"))
+)
 Description: Provides a complete pipeline for drug repurposing analysis using
     the Connectivity Map (CMap) L1000 database. Functionality includes database
     subsetting, reference profile extraction from GCTX files, signature matching
