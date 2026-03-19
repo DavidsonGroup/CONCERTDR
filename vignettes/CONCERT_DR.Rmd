@@ -1,0 +1,412 @@
+---
+title: "Drug Repurposing with CONCERTDR"
+author:
+  - name: Hengxin Pan
+    affiliation: Walter and Eliza Hall Institute of Medical Research
+    email: pan.h@wehi.edu.au
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    number_sections: true
+vignette: >
+  %\VignetteIndexEntry{Drug Repurposing with CONCERTDR}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  message  = FALSE,
+  warning  = FALSE
+)
+```
+
+# Overview
+
+**CONCERTDR** provides a complete pipeline for drug repurposing using the
+Connectivity Map (CMap) L1000 database. The core idea is *signature matching*:
+given a disease differential-expression signature (a ranked list of up- and
+down-regulated genes), CONCERTDR scores every perturbation in CMap and returns
+those whose transcriptional effect most strongly *reverses* the disease pattern.
+
+This vignette demonstrates two complementary use cases using a bundled
+AML-relevant example dataset (200 landmark genes × 500 signatures):
+
+- **Use case 1 — Find repurposing compounds**: score small-molecule (`trt_cp`)
+  perturbations against an AML disease signature to identify candidate drugs.
+- **Use case 2 — Find target genes**: score gene overexpression (`trt_oe`) and
+  CRISPR knockout (`trt_xpr`) perturbations against the same signature to
+  nominate therapeutic gene targets.
+
+All code in this vignette runs without any external downloads using the data
+bundled in `inst/extdata/`.
+
+```{r load}
+library(CONCERTDR)
+```
+
+# Bundled Example Data
+
+The package ships with a real CMap subset in `inst/extdata/`:
+
+| File | Description |
+|------|-------------|
+| `example_signature.txt` | AML disease signature (BCR-ABL activation) |
+| `example_reference_df.csv` | 200 genes × 500 CMap signatures (real z-scores) |
+| `example_siginfo.txt` | Metadata for the 500 signatures |
+| `example_compoundinfo.txt` | Compound annotations (MoA, target, phase) |
+
+```{r load-data}
+sig_file  <- system.file("extdata", "example_signature.txt",
+                          package = "CONCERTDR")
+ref_file  <- system.file("extdata", "example_reference_df.csv",
+                          package = "CONCERTDR")
+sig_info_file  <- system.file("extdata", "example_siginfo.txt",
+                               package = "CONCERTDR")
+comp_info_file <- system.file("extdata", "example_compoundinfo.txt",
+                               package = "CONCERTDR")
+
+# Load the reference matrix
+reference_df <- read.csv(ref_file, row.names = 1, check.names = FALSE)
+reference_df$gene_symbol <- rownames(reference_df)
+
+cat("Reference matrix:", nrow(reference_df), "genes ×",
+    ncol(reference_df) - 1, "signatures\n")
+```
+
+## The disease signature
+
+The example signature represents an AML BCR-ABL activation phenotype — genes
+whose expression is elevated (positive log2FC) or suppressed (negative log2FC)
+relative to normal haematopoietic cells. Drugs that *reverse* this pattern
+(i.e., suppress the up-regulated genes and activate the down-regulated ones)
+are candidate therapeutics.
+
+```{r view-signature}
+signature <- read.delim(sig_file)
+cat("Up-regulated genes:  ", sum(signature$log2FC > 0), "\n")
+cat("Down-regulated genes:", sum(signature$log2FC < 0), "\n")
+head(signature[order(-abs(signature$log2FC)), ], 10)
+```
+
+## The siginfo metadata
+
+The bundled siginfo covers both small-molecule (`trt_cp`) and gene perturbation
+(`trt_oe`, `trt_xpr`) signatures, spanning six AML-relevant cell lines.
+
+```{r view-siginfo}
+siginfo <- read.delim(sig_info_file, stringsAsFactors = FALSE)
+cat("Total signatures:", nrow(siginfo), "\n")
+table(Type = siginfo$pert_type, Cell = siginfo$cell_iname)
+```
+
+# Use Case 1 — Finding Repurposing Compounds
+
+## Filter to compound signatures
+
+We first subset the siginfo to `trt_cp` only, then build a reference matrix
+containing just those signatures. This keeps the scoring fast and the results
+interpretable.
+
+```{r filter-compounds}
+cp_siginfo <- subset_siginfo_beta(
+  siginfo_file = sig_info_file,
+  interactive  = FALSE,
+  filters      = list(pert_type = "trt_cp"),
+  verbose      = FALSE,
+  show_preview = FALSE
+)
+cat("Compound signatures:", nrow(cp_siginfo), "\n")
+table(cp_siginfo$cell_iname)
+```
+
+## Build compound reference matrix
+
+Rather than re-reading from GCTX (which would require the full CMap download),
+we subset the in-memory reference matrix to keep only the compound signatures
+identified above.
+
+```{r subset-reference-cp}
+cp_sig_ids <- cp_siginfo$sig_id
+cp_ref     <- reference_df[, c("gene_symbol",
+                                intersect(cp_sig_ids, colnames(reference_df))),
+                            drop = FALSE]
+cat("Compound reference:", nrow(cp_ref), "genes ×",
+    ncol(cp_ref) - 1, "signatures\n")
+```
+
+## Score the AML signature against compounds
+
+```{r score-compounds}
+results_cp <- process_signature_with_df(
+  signature_file = sig_file,
+  reference_df   = cp_ref,
+  methods        = c("xsum", "ks"),
+  topN           = 30,
+  permutations   = 100,
+  save_files     = FALSE
+)
+print(results_cp)
+```
+
+## Inspect top compound hits
+
+A negative score means the drug *reverses* the disease signature — the
+standard criterion for a candidate repurposing hit. BCR-ABL inhibitors such as
+imatinib and dasatinib should rank near the top against this AML signature.
+
+```{r top-compounds}
+xsum_cp <- results_cp$results$xsum
+top_cp  <- head(xsum_cp[order(xsum_cp$Score), ], 20)
+top_cp[, c("compound", "Score", "pValue", "pAdjValue")]
+```
+
+```{r plot-compound-scores, fig.width=8, fig.height=4}
+plot(results_cp, method = "xsum", plot_type = "scores", top_n = 20)
+```
+
+```{r plot-compound-volcano, fig.width=6, fig.height=4}
+plot(results_cp, method = "xsum", plot_type = "volcano")
+```
+
+## Annotate compound hits
+
+`annotate_drug_results()` joins the scoring output with siginfo and
+compoundinfo to add drug names, mechanism of action, targets, and clinical
+phase.
+
+```{r annotate-compounds}
+compinfo <- read.delim(comp_info_file, stringsAsFactors = FALSE)
+
+views_cp <- annotate_drug_results(
+  results_df     = xsum_cp,
+  sig_info_file  = cp_siginfo,
+  comp_info_file = compinfo,
+  write_outputs  = FALSE,
+  verbose        = FALSE
+)
+
+# Drug-level summary: one row per compound, best score across all contexts
+head(views_cp$wetlab_drug_view[,
+  c("perturbation_name", "Score", "effect_direction", "moa", "target")
+], 15)
+```
+
+```{r drug-context-summary}
+# How many cell-line contexts did each top drug appear in?
+head(views_cp$drug_context_summary[,
+  c("perturbation_name", "best_score", "n_contexts", "n_cell_lines", "moa_status")
+], 10)
+```
+
+## Barcode heatmap for top compounds
+
+The barcode heatmap shows the z-score profile of the top-scoring perturbations
+across the signature genes. Genes are arranged left-to-right as
+down-regulated → up-regulated in the disease; a drug that reverses the
+signature appears as warm colours on the left and cool colours on the right.
+
+```{r extract-zscores-cp}
+z_cp <- extract_signature_zscores(
+  results_df     = views_cp$tech_view_all,
+  signature_file = sig_file,
+  reference_df   = cp_ref,
+  max_genes      = 100,
+  max_perts      = 50,
+  verbose        = FALSE
+)
+cat("Heatmap matrix:", nrow(z_cp$z_plot), "perturbations ×",
+    ncol(z_cp$z_plot), "genes\n")
+```
+
+```{r heatmap-compounds, fig.width=14, fig.height=10}
+if (requireNamespace("ComplexHeatmap", quietly = TRUE) &&
+    requireNamespace("circlize",       quietly = TRUE)) {
+  plot_signature_direction_tile_barcode(
+    precomputed         = z_cp,
+    cluster_rows        = TRUE,
+    show_row_dendrogram = TRUE,
+    cluster_cols        = FALSE,
+    verbose             = FALSE
+  )
+} else {
+  message("Install ComplexHeatmap and circlize for heatmap rendering:\n",
+          "  BiocManager::install('ComplexHeatmap')\n",
+          "  install.packages('circlize')")
+}
+```
+
+# Use Case 2 — Finding Therapeutic Gene Targets
+
+Gene overexpression and CRISPR knockout perturbations in CMap can identify
+which genes, when modulated, produce a transcriptional effect similar to a
+beneficial drug. This nominates candidate therapeutic targets independently of
+any existing compound library.
+
+## Filter to gene perturbation signatures
+
+```{r filter-gene-perts}
+ge_siginfo <- subset_siginfo_beta(
+  siginfo_file = sig_info_file,
+  interactive  = FALSE,
+  filters      = list(pert_type = c("trt_oe", "trt_xpr")),
+  verbose      = FALSE,
+  show_preview = FALSE
+)
+cat("Gene perturbation signatures:", nrow(ge_siginfo), "\n")
+table(Type = ge_siginfo$pert_type, Cell = ge_siginfo$cell_iname)
+```
+
+## Build gene perturbation reference matrix
+
+```{r subset-reference-ge}
+ge_sig_ids <- ge_siginfo$sig_id
+ge_ref     <- reference_df[, c("gene_symbol",
+                                intersect(ge_sig_ids, colnames(reference_df))),
+                            drop = FALSE]
+cat("Gene perturbation reference:", nrow(ge_ref), "genes ×",
+    ncol(ge_ref) - 1, "signatures\n")
+```
+
+## Score the AML signature against gene perturbations
+
+```{r score-gene-perts}
+results_ge <- process_signature_with_df(
+  signature_file = sig_file,
+  reference_df   = ge_ref,
+  methods        = c("xsum", "ks"),
+  topN           = 50,
+  permutations   = 100,
+  save_files     = FALSE
+)
+print(results_ge)
+```
+
+## Inspect top gene perturbation hits
+
+Negative-scoring gene perturbations are those whose expression effect reverses
+the AML signature. An overexpression hit (trt_oe) suggests that activating
+that gene is therapeutic; a knockout hit (trt_xpr) suggests that silencing it
+is therapeutic.
+
+```{r top-gene-hits}
+xsum_ge <- results_ge$results$xsum
+top_ge  <- head(xsum_ge[order(xsum_ge$Score), ], 20)
+top_ge[, c("compound", "Score", "pValue", "pAdjValue")]
+```
+
+```{r plot-gene-scores, fig.width=8, fig.height=4}
+plot(results_ge, method = "xsum", plot_type = "scores", top_n = 20)
+```
+
+## Annotate gene perturbation hits
+
+```{r annotate-gene-perts}
+views_ge <- annotate_drug_results(
+  results_df     = xsum_ge,
+  sig_info_file  = ge_siginfo,
+  comp_info_file = compinfo,   # compinfo may not cover gene perts; that is expected
+  write_outputs  = FALSE,
+  verbose        = FALSE
+)
+
+# Gene-focused view: perturbation name, mode (OE vs XPR), score
+head(views_ge$wetlab_gene_view[,
+  c("perturbation_name", "mode", "Score", "effect_direction", "cell_line")
+], 15)
+```
+
+## Barcode heatmap for top gene perturbations
+
+```{r extract-zscores-ge}
+z_ge <- extract_signature_zscores(
+  results_df     = views_ge$tech_view_all,
+  signature_file = sig_file,
+  reference_df   = ge_ref,
+  max_genes      = 100,
+  max_perts      = 50,
+  verbose        = FALSE
+)
+```
+
+```{r heatmap-gene-perts, fig.width=14, fig.height=10}
+if (requireNamespace("ComplexHeatmap", quietly = TRUE) &&
+    requireNamespace("circlize",       quietly = TRUE)) {
+  plot_signature_direction_tile_barcode(
+    precomputed         = z_ge,
+    cluster_rows        = TRUE,
+    show_row_dendrogram = TRUE,
+    cluster_cols        = FALSE,
+    verbose             = FALSE
+  )
+}
+```
+
+# Comparing the Two Use Cases
+
+```{r compare-use-cases}
+# Top 10 compounds vs top 10 gene perturbations by XSum score
+top10_cp <- head(xsum_cp[order(xsum_cp$Score), "Score", drop = FALSE], 10)
+top10_ge <- head(xsum_ge[order(xsum_ge$Score), "Score", drop = FALSE], 10)
+
+cat("Score range — compounds:         ",
+    round(range(top10_cp$Score), 3), "\n")
+cat("Score range — gene perturbations:",
+    round(range(top10_ge$Score), 3), "\n")
+```
+
+The two use cases are complementary: compound hits suggest drugs that could be
+repositioned immediately, while gene perturbation hits suggest mechanistic
+targets that could guide future drug discovery or combination strategies.
+
+# Running with Full CMap Data
+
+For a real analysis, replace the bundled `reference_df` with a matrix built
+from the full CMap GCTX. Set file paths once at the top of your script:
+
+```{r full-cmap-setup, eval=FALSE}
+data_dir <- "/path/to/cmap_data"
+
+options(
+  CONCERTDR.data_dir          = data_dir,
+  CONCERTDR.gctx_file         = file.path(data_dir, "level5_beta_trt_cp_n720216x12328.gctx"),
+  CONCERTDR.siginfo_file      = file.path(data_dir, "siginfo_beta.txt"),
+  CONCERTDR.geneinfo_file     = file.path(data_dir, "geneinfo_beta.txt"),
+  CONCERTDR.compoundinfo_file = file.path(data_dir, "compoundinfo_beta.txt")
+)
+
+# Step 1: filter siginfo
+cp_siginfo <- subset_siginfo_beta(
+  getOption("CONCERTDR.siginfo_file"),
+  interactive = FALSE,
+  filters = list(
+    pert_type  = "trt_cp",
+    pert_itime = c("6 h", "24 h"),
+    cell_iname = c("K562", "HL60", "THP1", "JURKAT", "U937", "NB4")
+  )
+)
+
+# Step 2: build reference matrix from GCTX
+reference_df <- extract_cmap_data_from_siginfo(
+  siginfo_file  = cp_siginfo,
+  geneinfo_file = getOption("CONCERTDR.geneinfo_file"),
+  gctx_file     = getOption("CONCERTDR.gctx_file"),
+  filter_quality = FALSE,
+  landmark       = TRUE
+)
+
+# Steps 3–7: identical to the vignette above — just replace cp_ref with
+# reference_df and use larger topN / permutations for real-scale analysis:
+#   topN = 400, permutations = 1000
+```
+
+# Session Info
+
+```{r session-info}
+sessionInfo()
+```

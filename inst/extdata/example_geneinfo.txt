@@ -1,21 +1,164 @@
 gene_id	gene_symbol	gene_title	gene_type	src	feature_space
-7157	TP53	tumor protein p53	protein-coding	EG	landmark
-4609	MYC	MYC proto-oncogene	protein-coding	EG	landmark
-6774	STAT3	signal transducer and activator of transcription 3	protein-coding	EG	landmark
-1956	EGFR	epidermal growth factor receptor	protein-coding	EG	landmark
-3845	KRAS	KRAS proto-oncogene	protein-coding	EG	landmark
-207	AKT1	AKT serine/threonine kinase 1	protein-coding	EG	landmark
-596	BCL2	BCL2 apoptosis regulator	protein-coding	EG	landmark
-1017	CDK2	cyclin dependent kinase 2	protein-coding	EG	landmark
-595	CCND1	cyclin D1	protein-coding	EG	landmark
-5594	MAPK1	mitogen-activated protein kinase 1	protein-coding	EG	landmark
-5290	PIK3CA	phosphatidylinositol-4,5-bisphosphate 3-kinase catalytic subunit alpha	protein-coding	EG	landmark
-5728	PTEN	phosphatase and tensin homolog	protein-coding	EG	landmark
-3717	JAK2	Janus kinase 2	protein-coding	EG	landmark
-3065	HDAC1	histone deacetylase 1	protein-coding	EG	landmark
-6714	SRC	SRC proto-oncogene	protein-coding	EG	landmark
-25	ABL1	ABL proto-oncogene 1	protein-coding	EG	landmark
-4851	NOTCH1	notch receptor 1	protein-coding	EG	landmark
-7422	VEGFA	vascular endothelial growth factor A	protein-coding	EG	landmark
-2353	FOS	Fos proto-oncogene	protein-coding	EG	landmark
-3725	JUN	Jun proto-oncogene	protein-coding	EG	landmark
+25	ABL1	ABL proto-oncogene 1, non-receptor tyrosine kinase	protein-coding	NCBI	landmark
+142	PARP1	poly(ADP-ribose) polymerase 1	protein-coding	NCBI	landmark
+207	AKT1	AKT serine/threonine kinase 1	protein-coding	NCBI	landmark
+332	BIRC5	baculoviral IAP repeat containing 5	protein-coding	NCBI	landmark
+581	BAX	BCL2 associated X, apoptosis regulator	protein-coding	NCBI	landmark
+595	CCND1	cyclin D1	protein-coding	NCBI	landmark
+596	BCL2	BCL2 apoptosis regulator	protein-coding	NCBI	landmark
+637	BID	BH3 interacting domain death agonist	protein-coding	NCBI	landmark
+672	BRCA1	BRCA1 DNA repair associated	protein-coding	NCBI	landmark
+836	CASP3	caspase 3	protein-coding	NCBI	landmark
+890	CCNA2	cyclin A2	protein-coding	NCBI	landmark
+891	CCNB1	cyclin B1	protein-coding	NCBI	landmark
+896	CCND3	cyclin D3	protein-coding	NCBI	landmark
+983	CDK1	cyclin dependent kinase 1	protein-coding	NCBI	landmark
+1017	CDK2	cyclin dependent kinase 2	protein-coding	NCBI	landmark
+1019	CDK4	cyclin dependent kinase 4	protein-coding	NCBI	landmark
+1021	CDK6	cyclin dependent kinase 6	protein-coding	NCBI	landmark
+1026	CDKN1A	cyclin dependent kinase inhibitor 1A	protein-coding	NCBI	landmark
+1027	CDKN1B	cyclin dependent kinase inhibitor 1B	protein-coding	NCBI	landmark
+1029	CDKN2A	cyclin dependent kinase inhibitor 2A	protein-coding	NCBI	landmark
+1050	CEBPA	CCAAT enhancer binding protein alpha	protein-coding	NCBI	landmark
+1111	CHEK1	checkpoint kinase 1	protein-coding	NCBI	landmark
+1786	DNMT1	DNA methyltransferase 1	protein-coding	NCBI	landmark
+1788	DNMT3A	DNA methyltransferase 3 alpha	protein-coding	NCBI	landmark
+1848	DUSP6	dual specificity phosphatase 6	protein-coding	NCBI	landmark
+1956	EGFR	epidermal growth factor receptor	protein-coding	NCBI	landmark
+1978	EIF4EBP1	eukaryotic translation initiation factor 4E binding protein 1	protein-coding	NCBI	landmark
+2064	ERBB2	erb-b2 receptor tyrosine kinase 2	protein-coding	NCBI	landmark
+2113	ETS1	ETS proto-oncogene 1, transcription factor	protein-coding	NCBI	landmark
+2146	EZH2	enhancer of zeste 2 polycomb repressive complex 2 subunit	protein-coding	NCBI	landmark
+2353	FOS	Fos proto-oncogene, AP-1 transcription factor subunit	protein-coding	NCBI	landmark
+2534	FYN	FYN proto-oncogene, Src family tyrosine kinase	protein-coding	NCBI	landmark
+2624	GATA2	GATA binding protein 2	protein-coding	NCBI	landmark
+2736	GLI2	GLI family zinc finger 2	protein-coding	NCBI	landmark
+3066	HDAC2	histone deacetylase 2	protein-coding	NCBI	landmark
+3091	HIF1A	hypoxia inducible factor 1 subunit alpha	protein-coding	NCBI	landmark
+3280	HES1	hes family bHLH transcription factor 1	protein-coding	NCBI	landmark
+3551	IKBKB	inhibitor of nuclear factor kappa B kinase subunit beta	protein-coding	NCBI	landmark
+3725	JUN	Jun proto-oncogene, AP-1 transcription factor subunit	protein-coding	NCBI	landmark
+3815	KIT	KIT proto-oncogene, receptor tyrosine kinase	protein-coding	NCBI	landmark
+4609	MYC	MYC proto-oncogene, bHLH transcription factor	protein-coding	NCBI	landmark
+4791	NFKB2	nuclear factor kappa B subunit 2	protein-coding	NCBI	landmark
+4792	NFKBIA	NFKB inhibitor alpha	protein-coding	NCBI	landmark
+4851	NOTCH1	notch receptor 1	protein-coding	NCBI	landmark
+4893	NRAS	NRAS proto-oncogene, GTPase	protein-coding	NCBI	landmark
+5211	PFKL	phosphofructokinase, liver type	protein-coding	NCBI	landmark
+5290	PIK3CA	phosphatidylinositol-4,5-bisphosphate 3-kinase catalytic subunit alpha	protein-coding	NCBI	landmark
+5925	RB1	RB transcriptional corepressor 1	protein-coding	NCBI	landmark
+5971	RELB	RELB proto-oncogene, NF-kB subunit	protein-coding	NCBI	landmark
+6009	RHEB	Ras homolog, mTORC1 binding	protein-coding	NCBI	landmark
+6714	SRC	SRC proto-oncogene, non-receptor tyrosine kinase	protein-coding	NCBI	landmark
+6772	STAT1	signal transducer and activator of transcription 1	protein-coding	NCBI	landmark
+6774	STAT3	signal transducer and activator of transcription 3	protein-coding	NCBI	landmark
+6777	STAT5B	signal transducer and activator of transcription 5B	protein-coding	NCBI	landmark
+7099	TLR4	toll like receptor 4	protein-coding	NCBI	landmark
+7153	TOP2A	DNA topoisomerase II alpha	protein-coding	NCBI	landmark
+7157	TP53	tumor protein p53	protein-coding	NCBI	landmark
+8312	AXIN1	axin 1	protein-coding	NCBI	landmark
+8678	BECN1	beclin 1	protein-coding	NCBI	landmark
+8726	EED	embryonic ectoderm development	protein-coding	NCBI	landmark
+10013	HDAC6	histone deacetylase 6	protein-coding	NCBI	landmark
+10273	STUB1	STIP1 homology and U-box containing protein 1	protein-coding	NCBI	landmark
+11200	CHEK2	checkpoint kinase 2	protein-coding	NCBI	landmark
+23512	SUZ12	SUZ12 polycomb repressive complex 2 subunit	protein-coding	NCBI	landmark
+324	APC	APC regulator of WNT signaling pathway	protein-coding	NCBI	best inferred
+467	ATF3	activating transcription factor 3	protein-coding	NCBI	best inferred
+472	ATM	ATM serine/threonine kinase	protein-coding	NCBI	best inferred
+545	ATR	ATR serine/threonine kinase	protein-coding	NCBI	best inferred
+578	BAK1	BCL2 antagonist/killer 1	protein-coding	NCBI	best inferred
+598	BCL2L1	BCL2 like 1	protein-coding	NCBI	best inferred
+673	BRAF	B-Raf proto-oncogene, serine/threonine kinase	protein-coding	NCBI	best inferred
+675	BRCA2	BRCA2 DNA repair associated	protein-coding	NCBI	best inferred
+841	CASP8	caspase 8	protein-coding	NCBI	best inferred
+842	CASP9	caspase 9	protein-coding	NCBI	best inferred
+861	RUNX1	runt related transcription factor 1	protein-coding	NCBI	best inferred
+894	CCND2	cyclin D2	protein-coding	NCBI	best inferred
+898	CCNE1	cyclin E1	protein-coding	NCBI	best inferred
+1387	CREBBP	CREB binding protein	protein-coding	NCBI	best inferred
+1432	MAPK14	mitogen-activated protein kinase 14	protein-coding	NCBI	best inferred
+1499	CTNNB1	catenin beta 1	protein-coding	NCBI	best inferred
+1843	DUSP1	dual specificity phosphatase 1	protein-coding	NCBI	best inferred
+1855	DVL1	dishevelled segment polarity protein 1	protein-coding	NCBI	best inferred
+1869	E2F1	E2F transcription factor 1	protein-coding	NCBI	best inferred
+2023	ENO1	enolase 1	protein-coding	NCBI	best inferred
+2033	EP300	E1A binding protein p300	protein-coding	NCBI	best inferred
+2078	ERG	ETS transcription factor ERG	protein-coding	NCBI	best inferred
+2114	ETS2	ETS proto-oncogene 2, transcription factor	protein-coding	NCBI	best inferred
+2313	FLI1	Fli-1 proto-oncogene, ETS transcription factor	protein-coding	NCBI	best inferred
+2322	FLT3	fms related tyrosine kinase 3	protein-coding	NCBI	best inferred
+2475	MTOR	mechanistic target of rapamycin kinase	protein-coding	NCBI	best inferred
+2539	G6PD	glucose-6-phosphate dehydrogenase	protein-coding	NCBI	best inferred
+2735	GLI1	GLI family zinc finger 1	protein-coding	NCBI	best inferred
+2932	GSK3B	glycogen synthase kinase 3 beta	protein-coding	NCBI	best inferred
+3014	H2AFX	H2A histone family member X	protein-coding	NCBI	best inferred
+3065	HDAC1	histone deacetylase 1	protein-coding	NCBI	best inferred
+3265	HRAS	HRas proto-oncogene, GTPase	protein-coding	NCBI	best inferred
+3417	IDH1	isocitrate dehydrogenase (NADP(+)) 1, cytosolic	protein-coding	NCBI	best inferred
+3418	IDH2	isocitrate dehydrogenase (NADP(+)) 2, mitochondrial	protein-coding	NCBI	best inferred
+3569	IL6	interleukin 6	protein-coding	NCBI	best inferred
+3570	IL6R	interleukin 6 receptor	protein-coding	NCBI	best inferred
+3659	IRF1	interferon regulatory factor 1	protein-coding	NCBI	best inferred
+3661	IRF3	interferon regulatory factor 3	protein-coding	NCBI	best inferred
+3662	IRF4	interferon regulatory factor 4	protein-coding	NCBI	best inferred
+3716	JAK1	Janus kinase 1	protein-coding	NCBI	best inferred
+3717	JAK2	Janus kinase 2	protein-coding	NCBI	best inferred
+3718	JAK3	Janus kinase 3	protein-coding	NCBI	best inferred
+3726	JUNB	JunB proto-oncogene, AP-1 transcription factor subunit	protein-coding	NCBI	best inferred
+3845	KRAS	KRAS proto-oncogene, GTPase	protein-coding	NCBI	best inferred
+3932	LCK	LCK proto-oncogene, Src family tyrosine kinase	protein-coding	NCBI	best inferred
+3939	LDHA	lactate dehydrogenase A	protein-coding	NCBI	best inferred
+4149	MAX	MYC associated factor X	protein-coding	NCBI	best inferred
+4170	MCL1	MCL1 apoptosis regulator, BCL2 family member	protein-coding	NCBI	best inferred
+4193	MDM2	MDM2 proto-oncogene	protein-coding	NCBI	best inferred
+4233	MET	MET proto-oncogene, receptor tyrosine kinase	protein-coding	NCBI	best inferred
+4601	MXI1	MAX interactor 1, dimerization protein	protein-coding	NCBI	best inferred
+4602	MYB	MYB proto-oncogene, transcription factor	protein-coding	NCBI	best inferred
+4613	MYCN	MYCN proto-oncogene, bHLH transcription factor	protein-coding	NCBI	best inferred
+4763	NF1	neurofibromin 1	protein-coding	NCBI	best inferred
+4790	NFKB1	nuclear factor kappa B subunit 1	protein-coding	NCBI	best inferred
+4837	NNMT	nicotinamide N-methyltransferase	protein-coding	NCBI	best inferred
+4853	NOTCH2	notch receptor 2	protein-coding	NCBI	best inferred
+5156	PDGFRA	platelet derived growth factor receptor alpha	protein-coding	NCBI	best inferred
+5159	PDGFRB	platelet derived growth factor receptor beta	protein-coding	NCBI	best inferred
+5291	PIK3CB	phosphatidylinositol-4,5-bisphosphate 3-kinase catalytic subunit beta	protein-coding	NCBI	best inferred
+5293	PIK3CD	phosphatidylinositol-4,5-bisphosphate 3-kinase catalytic subunit delta	protein-coding	NCBI	best inferred
+5315	PKM	pyruvate kinase M1/2	protein-coding	NCBI	best inferred
+5594	MAPK1	mitogen-activated protein kinase 1	protein-coding	NCBI	best inferred
+5595	MAPK3	mitogen-activated protein kinase 3	protein-coding	NCBI	best inferred
+5599	MAPK8	mitogen-activated protein kinase 8	protein-coding	NCBI	best inferred
+5604	MAP2K1	mitogen-activated protein kinase kinase 1	protein-coding	NCBI	best inferred
+5605	MAP2K2	mitogen-activated protein kinase kinase 2	protein-coding	NCBI	best inferred
+5700	PSMC1	proteasome 26S subunit, ATPase 1	protein-coding	NCBI	best inferred
+5707	PSMD1	proteasome 26S subunit, non-ATPase 1	protein-coding	NCBI	best inferred
+5728	PTEN	phosphatase and tensin homolog	protein-coding	NCBI	best inferred
+5888	RAD51	RAD51 recombinase	protein-coding	NCBI	best inferred
+5894	RAF1	Raf-1 proto-oncogene, serine/threonine kinase	protein-coding	NCBI	best inferred
+5970	RELA	RELA proto-oncogene, NF-kB subunit	protein-coding	NCBI	best inferred
+6198	RPS6KB1	ribosomal protein S6 kinase B1	protein-coding	NCBI	best inferred
+6502	SKP2	S-phase kinase associated protein 2	protein-coding	NCBI	best inferred
+6608	SMO	smoothened, frizzled class receptor	protein-coding	NCBI	best inferred
+6773	STAT2	signal transducer and activator of transcription 2	protein-coding	NCBI	best inferred
+6776	STAT5A	signal transducer and activator of transcription 5A	protein-coding	NCBI	best inferred
+6778	STAT6	signal transducer and activator of transcription 6	protein-coding	NCBI	best inferred
+6886	TAL1	TAL bHLH transcription factor 1, erythroid differentiation factor	protein-coding	NCBI	best inferred
+7124	TNF	tumor necrosis factor	protein-coding	NCBI	best inferred
+7132	TNFRSF1A	TNF receptor superfamily member 1A	protein-coding	NCBI	best inferred
+7150	TOP1	DNA topoisomerase I	protein-coding	NCBI	best inferred
+7248	TSC1	TSC complex subunit 1	protein-coding	NCBI	best inferred
+7249	TSC2	TSC complex subunit 2	protein-coding	NCBI	best inferred
+7297	TYK2	tyrosine kinase 2	protein-coding	NCBI	best inferred
+7314	UBB	ubiquitin B	protein-coding	NCBI	best inferred
+8242	KDM5C	lysine demethylase 5C	protein-coding	NCBI	best inferred
+8651	SOCS1	suppressor of cytokine signaling 1	protein-coding	NCBI	best inferred
+8841	HDAC3	histone deacetylase 3	protein-coding	NCBI	best inferred
+9021	SOCS3	suppressor of cytokine signaling 3	protein-coding	NCBI	best inferred
+9474	ATG5	autophagy related 5	protein-coding	NCBI	best inferred
+10000	AKT3	AKT serine/threonine kinase 3	protein-coding	NCBI	best inferred
+10018	BCL2L11	BCL2 like 11	protein-coding	NCBI	best inferred
+10135	NAMPT	nicotinamide phosphoribosyltransferase	protein-coding	NCBI	best inferred
+10533	ATG7	autophagy related 7	protein-coding	NCBI	best inferred
+23028	KDM1A	lysine demethylase 1A	protein-coding	NCBI	best inferred
+55294	FBXW7	F-box and WD repeat domain containing 7	protein-coding	NCBI	best inferred
+81631	MAP1LC3B	microtubule associated protein 1 light chain 3 beta	protein-coding	NCBI	best inferred

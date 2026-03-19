@@ -79,18 +79,14 @@ extract_cmap_data_from_siginfo <- function(siginfo_file = "siginfo_beta.txt",
       stop("Gene info file not found: ", geneinfo_file)
     }
     if (verbose) message("Reading gene info file...")
-    tryCatch({
-      if (requireNamespace("data.table", quietly = TRUE)) {
-        geneinfo_df <- data.table::fread(geneinfo_file, header = TRUE,
-                                         stringsAsFactors = FALSE, data.table = FALSE)
-      } else {
-        geneinfo_df <- utils::read.table(geneinfo_file, sep = "\t", header = TRUE,
-                                         stringsAsFactors = FALSE, quote = "",
-                                         comment.char = "", fill = TRUE)
-      }
-    }, error = function(e) {
-      stop("Error reading gene info file: ", e$message)
-    })
+    if (requireNamespace("data.table", quietly = TRUE)) {
+      geneinfo_df <- data.table::fread(geneinfo_file, header = TRUE,
+                                       stringsAsFactors = FALSE, data.table = FALSE)
+    } else {
+      geneinfo_df <- utils::read.table(geneinfo_file, sep = "\t", header = TRUE,
+                                       stringsAsFactors = FALSE, quote = "",
+                                       comment.char = "", fill = TRUE)
+    }
   } else if (is.data.frame(geneinfo_file)) {
     geneinfo_df <- geneinfo_file
   } else {
@@ -109,18 +105,14 @@ extract_cmap_data_from_siginfo <- function(siginfo_file = "siginfo_beta.txt",
       stop("Signature info file not found: ", siginfo_file)
     }
     if (verbose) message("Reading signature info file...")
-    tryCatch({
-      if (requireNamespace("data.table", quietly = TRUE)) {
-        sig_info <- data.table::fread(siginfo_file, header = TRUE,
-                                      stringsAsFactors = FALSE, data.table = FALSE)
-      } else {
-        sig_info <- utils::read.table(siginfo_file, sep = "\t", header = TRUE,
-                                      stringsAsFactors = FALSE, quote = "",
-                                      comment.char = "", fill = TRUE)
-      }
-    }, error = function(e) {
-      stop("Error reading signature info file: ", e$message)
-    })
+    if (requireNamespace("data.table", quietly = TRUE)) {
+      sig_info <- data.table::fread(siginfo_file, header = TRUE,
+                                    stringsAsFactors = FALSE, data.table = FALSE)
+    } else {
+      sig_info <- utils::read.table(siginfo_file, sep = "\t", header = TRUE,
+                                    stringsAsFactors = FALSE, quote = "",
+                                    comment.char = "", fill = TRUE)
+    }
   } else if (is.data.frame(siginfo_file)) {
     sig_info <- siginfo_file
   } else {

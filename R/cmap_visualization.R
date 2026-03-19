@@ -49,8 +49,9 @@
 #'                         package = "CONCERTDR")
 #' ref_df <- read.csv(ref_file, row.names = 1, check.names = FALSE)
 #' ref_df$gene_symbol <- rownames(ref_df)
+#' demo_sig <- colnames(ref_df)[1]
 #' zmat <- extract_signature_zscores(
-#'   results_df     = data.frame(sig_id = "DEMO001", Score = -0.72),
+#'   results_df     = data.frame(sig_id = demo_sig, Score = -0.72),
 #'   signature_file = sig_file,
 #'   reference_df   = ref_df,
 #'   pert_id_col    = "sig_id"
@@ -387,9 +388,9 @@ extract_signature_zscores <- function(results_df,
 #'   repeatedly passing full file paths.
 #' @param selected_drug Optional drug identifier to filter \code{results_df}
 #'   before selecting perturbations.
-#' @param selected_drug_col Optional column used with \\code{selected_drug}.
-#'   If NULL, auto-detect from \\code{perturbation_name}, \\code{display_name},
-#'   \\code{pert_id}, \\code{cmap_name}, \\code{pert_name}.
+#' @param selected_drug_col Optional column used with \code{selected_drug}.
+#'   If NULL, auto-detect from \code{perturbation_name}, \code{display_name},
+#'   \code{pert_id}, \code{cmap_name}, \code{pert_name}.
 #' @param pert_id_col Perturbation id column in \code{results_df}
 #'   (default: \code{"sig_id"}; falls back to \code{"compound"} for older results).
 #' @param score_col Score column in \code{results_df} (default: \code{"Score"}).
@@ -400,14 +401,14 @@ extract_signature_zscores <- function(results_df,
 #'   (default: \code{"complete"}).
 #' @param show_row_dendrogram Logical; whether to draw a row dendrogram when
 #'   \code{cluster_rows = TRUE} (default: TRUE).
-#' @param cluster_cols Logical; cluster gene columns (default: FALSE — genes
+#' @param cluster_cols Logical; cluster gene columns (default: FALSE - genes
 #'   are kept in signature direction order: down then up).
 #' @param cluster_method_cols Clustering linkage method for column clustering
 #'   (default: \code{"complete"}).
 #' @param show_col_dendrogram Logical; whether to draw a column dendrogram
 #'   when \code{cluster_cols = TRUE} (default: TRUE).
 #' @param precomputed Optional; the output of \code{\link{extract_signature_zscores}}.
-#'   If provided, skips all data-loading and GCTX-extraction steps — all
+#'   If provided, skips all data-loading and GCTX-extraction steps - all
 #'   data-related arguments (\code{results_df}, \code{signature_file},
 #'   \code{gctx_file}, etc.) are ignored.
 #' @param save_png Logical; save PNG output (default: FALSE).
@@ -431,12 +432,15 @@ extract_signature_zscores <- function(results_df,
 #'     requireNamespace("circlize", quietly = TRUE)) {
 #'   sig_file <- system.file("extdata", "example_signature.txt",
 #'                           package = "CONCERTDR")
+#'   ref_df <- read.csv(system.file("extdata", "example_reference_df.csv",
+#'                                  package = "CONCERTDR"),
+#'                      row.names = 1, check.names = FALSE)
+#'   ref_df$gene_symbol <- rownames(ref_df)
+#'   demo_sig <- colnames(ref_df)[1]
 #'   plot_signature_direction_tile_barcode(
-#'     results_df    = data.frame(sig_id = "DEMO001", Score = -0.72),
+#'     results_df    = data.frame(sig_id = demo_sig, Score = -0.72),
 #'     signature_file = sig_file,
-#'     reference_df  = read.csv(system.file("extdata", "example_reference_df.csv",
-#'                                          package = "CONCERTDR"),
-#'                              row.names = 1, check.names = FALSE),
+#'     reference_df  = ref_df,
 #'     pert_id_col   = "sig_id"
 #'   )
 #' }

@@ -17,10 +17,13 @@ ref_df <- function() {
 }
 
 results_df <- function() {
+  # Derive compound IDs directly from the reference matrix so that this
+  # fixture remains valid regardless of which example dataset is installed.
+  sig_ids <- setdiff(colnames(ref_df()), "gene_symbol")
+  n       <- length(sig_ids)
   data.frame(
-    compound = paste0("DEMO", sprintf("%03d", 1:10)),
-    Score    = c(-0.72, -0.65, -0.50, -0.40, -0.30,
-                 0.10,  0.20,  0.35,  0.45,  0.60),
+    compound = sig_ids,
+    Score    = seq(-1, 1, length.out = n),
     stringsAsFactors = FALSE
   )
 }
@@ -218,7 +221,8 @@ test_that("selected_drug filters to matching rows", {
   skip_if_no_example()
   # Create a results_df with a drug name column
   rd_with_drug <- results_df()
-  rd_with_drug$drug_name <- rep(c("imatinib", "dasatinib"), 5)
+  rd_with_drug$drug_name <- rep(c("imatinib", "dasatinib"),
+                                length.out = nrow(rd_with_drug))
 
   z_all    <- extract_signature_zscores(
     results_df     = rd_with_drug,
@@ -228,13 +232,13 @@ test_that("selected_drug filters to matching rows", {
     verbose        = FALSE
   )
   z_subset <- extract_signature_zscores(
-    results_df     = rd_with_drug,
-    signature_file = sig_file(),
-    reference_df   = ref_df(),
-    selected_drug  = "imatinib",
+    results_df        = rd_with_drug,
+    signature_file    = sig_file(),
+    reference_df      = ref_df(),
+    selected_drug     = "imatinib",
     selected_drug_col = "drug_name",
-    max_perts      = 10,
-    verbose        = FALSE
+    max_perts         = 10,
+    verbose           = FALSE
   )
 
   expect_lte(nrow(z_subset$z_plot), nrow(z_all$z_plot))
@@ -524,9 +528,6 @@ test_that("subset_siginfo_beta errors when siginfo_file does not exist", {
 test_that("subset_siginfo_beta silently skips unrecognised filter columns", {
   f <- make_siginfo_file()
   on.exit(unlink(f))
-  # The non-interactive filter loop checks `if (col %in% names(filtered_data))`
-  # and silently skips columns not present — no warning is issued.
-  # The function should still return a data.frame with all original rows.
   out <- subset_siginfo_beta(
     f,
     interactive  = FALSE,
@@ -535,7 +536,6 @@ test_that("subset_siginfo_beta silently skips unrecognised filter columns", {
     show_preview = FALSE
   )
   expect_s3_class(out, "data.frame")
-  # All rows are retained because the unknown filter had no effect
   orig <- read.delim(f, stringsAsFactors = FALSE)
   expect_equal(nrow(out), nrow(orig))
 })

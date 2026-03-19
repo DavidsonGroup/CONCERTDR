@@ -2,3 +2,5 @@
 ^\.Rproj\.user$
 ^MANUAL_FUNCTION_CHECKLIST\.md$
 ^\.DS_Store$
+^LICENSE\.md$
+^test\.R$

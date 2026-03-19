@@ -87,8 +87,9 @@ ref_file <- system.file("extdata", "example_reference_df.csv",
                         package = "CONCERTDR")
 ref_df <- read.csv(ref_file, row.names = 1, check.names = FALSE)
 ref_df$gene_symbol <- rownames(ref_df)
+demo_sig <- colnames(ref_df)[1]
 zmat <- extract_signature_zscores(
-  results_df     = data.frame(sig_id = "DEMO001", Score = -0.72),
+  results_df     = data.frame(sig_id = demo_sig, Score = -0.72),
   signature_file = sig_file,
   reference_df   = ref_df,
   pert_id_col    = "sig_id"

@@ -26,7 +26,6 @@ Depends:
 Imports:
     data.table,
     rhdf5,
-    methods,
     stats,
     utils
 Suggests:

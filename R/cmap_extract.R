@@ -8,6 +8,71 @@
 #' @keywords internal
 NULL
 
+#' Read first existing HDF5 dataset from candidate paths
+#' @param fname HDF5/GCTX file path
+#' @param paths Candidate dataset paths
+#' @return Dataset content
+#' @keywords internal
+fast_read_meta <- function(fname, paths) {
+  for (p in paths) {
+    val <- tryCatch(rhdf5::h5read(fname, p), error = function(e) NULL)
+    if (!is.null(val)) return(val)
+  }
+  stop("Could not read metadata from GCTX file. Checked paths: ",
+       paste(paths, collapse = ", "))
+}
+
+#' Fast parser for GCTX matrices with optional row/column subsetting
+#' @param fname Path to GCTX file
+#' @param rid Optional character vector of row ids (gene ids)
+#' @param cid Optional character vector of column ids (signature ids)
+#' @return Numeric matrix with selected rows/columns
+#' @keywords internal
+fast_parse_gctx <- function(fname, rid = NULL, cid = NULL) {
+  if (!file.exists(fname)) {
+    stop("GCTX file not found: ", fname)
+  }
+  if (!requireNamespace("rhdf5", quietly = TRUE)) {
+    stop("Package 'rhdf5' is required to read GCTX files")
+  }
+
+  row_ids <- as.character(fast_read_meta(fname, c("/0/META/ROW/id", "/META/ROW/id")))
+  col_ids <- as.character(fast_read_meta(fname, c("/0/META/COL/id", "/META/COL/id")))
+
+  row_idx <- if (is.null(rid)) {
+    seq_along(row_ids)
+  } else {
+    match(as.character(rid), row_ids)
+  }
+  col_idx <- if (is.null(cid)) {
+    seq_along(col_ids)
+  } else {
+    match(as.character(cid), col_ids)
+  }
+
+  row_idx <- row_idx[!is.na(row_idx)]
+  col_idx <- col_idx[!is.na(col_idx)]
+
+  if (length(row_idx) == 0 || length(col_idx) == 0) {
+    out <- matrix(numeric(0), nrow = length(row_idx), ncol = length(col_idx))
+    if (!is.null(rid)) rownames(out) <- as.character(rid)[!is.na(match(as.character(rid), row_ids))]
+    if (!is.null(cid)) colnames(out) <- as.character(cid)[!is.na(match(as.character(cid), col_ids))]
+    return(out)
+  }
+
+  mat <- tryCatch(
+    rhdf5::h5read(fname, "/0/DATA/0/matrix", index = list(row_idx, col_idx)),
+    error = function(e) {
+      rhdf5::h5read(fname, "/DATA/0/matrix", index = list(row_idx, col_idx))
+    }
+  )
+
+  mat <- as.matrix(mat)
+  rownames(mat) <- row_ids[row_idx]
+  colnames(mat) <- col_ids[col_idx]
+  mat
+}
+
 #' Get Gene IDs and Gene Names for Landmark Genes
 #'
 #' @param geneinfo_df Data frame containing gene information
@@ -208,7 +273,7 @@ process_combinations_file <- function(combinations_file, task_id = NULL,
     output_files <- c(output_files, output_file)
   } else {
     # Process all combinations
-    for (i in 1:nrow(combinations)) {
+    for (i in seq_len(nrow(combinations))) {
       message(sprintf("\n--- Combination %d of %d ---\n", i, nrow(combinations)))
       output_file <- process_combination(combinations[i, ], rid, genenames, sig_info, gctx_file, output_dir)
       output_files <- c(output_files, output_file)

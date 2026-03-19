@@ -120,9 +120,11 @@ test_that("process_signature_with_df returns a cmap_signature_result", {
 
 test_that("result list has all expected components", {
   skip_if_no_example()
+  ref <- ref_df()
+  expected_n_signatures <- ncol(ref) - 1L  # exclude gene_symbol column
   res <- process_signature_with_df(
     signature_file = sig_file(),
-    reference_df   = ref_df(),
+    reference_df   = ref,
     permutations   = 5,
     methods        = c("ks", "xsum"),
     save_files     = FALSE
@@ -134,7 +136,7 @@ test_that("result list has all expected components", {
   for (method in c("ks", "xsum")) {
     df <- res$results[[method]]
     expect_true(all(c("compound", "Score", "pValue", "pAdjValue", "rank") %in% names(df)))
-    expect_equal(nrow(df), 10)  # example_reference_df has 10 signatures
+    expect_equal(nrow(df), expected_n_signatures)
   }
 })
 

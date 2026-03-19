@@ -67,9 +67,9 @@ repeatedly passing full file paths.}
 \item{selected_drug}{Optional drug identifier to filter \code{results_df}
 before selecting perturbations.}
 
-\item{selected_drug_col}{Optional column used with \\code{selected_drug}.
-If NULL, auto-detect from \\code{perturbation_name}, \\code{display_name},
-\\code{pert_id}, \\code{cmap_name}, \\code{pert_name}.}
+\item{selected_drug_col}{Optional column used with \code{selected_drug}.
+If NULL, auto-detect from \code{perturbation_name}, \code{display_name},
+\code{pert_id}, \code{cmap_name}, \code{pert_name}.}
 
 \item{pert_id_col}{Perturbation id column in \code{results_df}
 (default: \code{"sig_id"}; falls back to \code{"compound"} for older results).}
@@ -88,7 +88,7 @@ If NULL, auto-detect from \\code{perturbation_name}, \\code{display_name},
 \item{show_row_dendrogram}{Logical; whether to draw a row dendrogram when
 \code{cluster_rows = TRUE} (default: TRUE).}
 
-\item{cluster_cols}{Logical; cluster gene columns (default: FALSE — genes
+\item{cluster_cols}{Logical; cluster gene columns (default: FALSE - genes
 are kept in signature direction order: down then up).}
 
 \item{cluster_method_cols}{Clustering linkage method for column clustering
@@ -98,7 +98,7 @@ are kept in signature direction order: down then up).}
 when \code{cluster_cols = TRUE} (default: TRUE).}
 
 \item{precomputed}{Optional; the output of \code{\link{extract_signature_zscores}}.
-If provided, skips all data-loading and GCTX-extraction steps — all
+If provided, skips all data-loading and GCTX-extraction steps - all
 data-related arguments (\code{results_df}, \code{signature_file},
 \code{gctx_file}, etc.) are ignored.}
 
@@ -135,12 +135,15 @@ if (requireNamespace("ComplexHeatmap", quietly = TRUE) &&
     requireNamespace("circlize", quietly = TRUE)) {
   sig_file <- system.file("extdata", "example_signature.txt",
                           package = "CONCERTDR")
+  ref_df <- read.csv(system.file("extdata", "example_reference_df.csv",
+                                 package = "CONCERTDR"),
+                     row.names = 1, check.names = FALSE)
+  ref_df$gene_symbol <- rownames(ref_df)
+  demo_sig <- colnames(ref_df)[1]
   plot_signature_direction_tile_barcode(
-    results_df    = data.frame(sig_id = "DEMO001", Score = -0.72),
+    results_df    = data.frame(sig_id = demo_sig, Score = -0.72),
     signature_file = sig_file,
-    reference_df  = read.csv(system.file("extdata", "example_reference_df.csv",
-                                         package = "CONCERTDR"),
-                             row.names = 1, check.names = FALSE),
+    reference_df  = ref_df,
     pert_id_col   = "sig_id"
   )
 }

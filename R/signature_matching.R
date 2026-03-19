@@ -491,7 +491,7 @@ print.cmap_signature_result <- function(x, ...) {
   # Print top compounds from summary (if available)
   if (nrow(x$summary) > 0) {
     top_n <- min(5, nrow(x$summary))
-    top_compounds <- x$summary[order(x$summary$global_rank)[1:top_n], ]
+    top_compounds <- x$summary[order(x$summary$global_rank)[seq_len(top_n)], ]
     
     cat("\nTop compounds across all methods:\n")
     for (i in seq_len(nrow(top_compounds))) {
@@ -633,9 +633,9 @@ plot.cmap_signature_result <- function(x, method = NULL, plot_type = "scores", t
   # Different plot types
   if (plot_type == "scores") {
     # Bar plot of top scores
-    top_df <- result_df[order(-result_df$Score), ][1:min(top_n, nrow(result_df)), ]
+    top_df <- result_df[order(-result_df$Score), ][seq_len(min(top_n, nrow(result_df))), ]
     
-    p <- ggplot2::ggplot(top_df, ggplot2::aes(x = reorder(compound, Score), y = Score)) +
+    p <- ggplot2::ggplot(top_df, ggplot2::aes(x = stats::reorder(compound, Score), y = Score)) +
       ggplot2::geom_bar(stat = "identity", fill = "steelblue") +
       ggplot2::coord_flip() +
       ggplot2::labs(
