@@ -9,15 +9,15 @@ Authors@R: c(
         comment = c(ORCID = "0009-0004-1274-1612")),
     person("Chin Wee", "Tan",
         email = "cwtan@wehi.edu.au",
-        role = "aut",
+        role = c("aut", "ths"),
         comment = c(ORCID = "0000-0001-9695-7218")),
     person("Gad", "Abraham",
-        role = "aut"),
+        role = c("aut", "ths")),
     person("Nadia", "Davidson",
         email = "davidson.n@wehi.edu.au",
-        role = "aut",
+        role = c("aut", "ths"),
         comment = c(ORCID = "0000-0002-8461-7467"))
-)
+ )
 Description: Provides a complete pipeline for drug repurposing analysis using
     the Connectivity Map (CMap) L1000 database. Functionality includes database
     subsetting, reference profile extraction from GCTX files, signature matching
