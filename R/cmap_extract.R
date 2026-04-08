@@ -36,8 +36,8 @@ fast_parse_gctx <- function(fname, rid = NULL, cid = NULL) {
     stop("Package 'rhdf5' is required to read GCTX files")
   }
 
-  row_ids <- as.character(fast_read_meta(fname, c("/0/META/ROW/id", "/META/ROW/id")))
-  col_ids <- as.character(fast_read_meta(fname, c("/0/META/COL/id", "/META/COL/id")))
+  row_ids <- trimws(as.character(fast_read_meta(fname, c("/0/META/ROW/id", "/META/ROW/id"))))
+  col_ids <- trimws(as.character(fast_read_meta(fname, c("/0/META/COL/id", "/META/COL/id"))))
 
   row_idx <- if (is.null(rid)) {
     seq_along(row_ids)
