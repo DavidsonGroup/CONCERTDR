@@ -49,6 +49,8 @@
 #'     \item{\code{logfc_map}}{Named numeric vector of signature log2FC values.}
 #'     \item{\code{sig_ids}}{Character vector of selected \code{sig_id}s.}
 #'     \item{\code{sig_labels}}{Character vector of human-readable labels.}
+#'     \item{\code{sig_scores}}{Numeric vector of \code{score_col} values in
+#'       the same order as \code{sig_ids} and the rows of \code{z_plot}.}
 #'   }
 #'
 #' @examples
@@ -301,6 +303,10 @@ extract_signature_zscores <- function(results_df,
   }
   if (length(sig_ids) == 0) stop("No perturbation ids selected")
   if (verbose) message("Perturbations selected: ", length(sig_ids))
+
+  # scores in the same order as sig_ids (NA for any id not found in tech)
+  score_lookup <- stats::setNames(tech[[score_col]], as.character(tech[[pert_id_col]]))
+  sig_scores   <- unname(score_lookup[sig_ids])
   
   # optional labels from siginfo
   sig_labels <- sig_ids
@@ -373,7 +379,8 @@ extract_signature_zscores <- function(results_df,
     ordered_genes = ordered_genes,
     logfc_map     = logfc_map,
     sig_ids       = sig_ids,
-    sig_labels    = sig_labels
+    sig_labels    = sig_labels,
+    sig_scores    = sig_scores
   )
 }
 
@@ -515,6 +522,7 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
     ordered_genes <- precomputed$ordered_genes
     logfc_map     <- precomputed$logfc_map
     sig_ids       <- precomputed$sig_ids
+    sig_scores    <- precomputed$sig_scores   # NULL for old precomputed objects
     if (verbose) message("Using precomputed matrix: ", nrow(z_plot),
                          " perturbations \u00d7 ", ncol(z_plot), " genes")
   } else {
@@ -541,10 +549,20 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
     ordered_genes <- extracted$ordered_genes
     logfc_map     <- extracted$logfc_map
     sig_ids       <- extracted$sig_ids
+    sig_scores    <- extracted$sig_scores
   }
-  
+
   if (nrow(z_plot) == 0 || ncol(z_plot) == 0) {
     stop("No data available for heatmap")
+  }
+
+  # append score to each row label: "drug | dose | time | cell (score)"
+  if (!is.null(sig_scores) && length(sig_scores) == nrow(z_plot)) {
+    rownames(z_plot) <- paste0(
+      rownames(z_plot), " (",
+      formatC(sig_scores, format = "f", digits = 3),
+      ")"
+    )
   }
   
   # ── ComplexHeatmap ─────────────────────────────────────────────────────────

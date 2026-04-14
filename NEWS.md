@@ -1,5 +1,16 @@
 # CONCERTDR 0.99.1
 
+## Bug fixes and improvements
+
+* **`process_signature_with_df()` — gene coverage message now reflects topN**:
+  The "Found X/Y up-regulated genes" progress message previously reported
+  overlap against the full signature gene list. It now sorts each direction by
+  effect size, truncates to the `topN` genes actually passed to the scoring
+  functions, and reports overlap against that subset. The denominator and
+  percentage therefore match the genes that scoring methods such as XSum and
+  XCos will use. The message also appends `(top N per direction)` to make the
+  basis of the calculation explicit.
+
 ## New features
 
 * **Split-direction mode for `extract_signature_zscores()` and

@@ -212,13 +212,27 @@ process_signature_with_df <- function(signature_file, reference_df, output_dir =
   common_up <- intersect(Up, rownames(ref))
   common_down <- intersect(Down, rownames(ref))
   
-  # Calculate percent overlap to assess gene coverage
-  pct_up <- round(length(common_up) / length(Up) * 100, 1)
-  pct_down <- round(length(common_down) / length(Down) * 100, 1)
-  
-  message(sprintf("Found %d/%d up-regulated genes (%g%%) and %d/%d down-regulated genes (%g%%) in reference",
-                  length(common_up), length(Up), pct_up,
-                  length(common_down), length(Down), pct_down))
+  # Report overlap based on the topN genes actually used by scoring methods.
+  # Sort each direction by effect size, truncate to topN, then intersect with ref.
+  up_sorted   <- gene_data[gene_data$log2FC > 0, , drop = FALSE]
+  up_sorted   <- up_sorted[order(up_sorted$log2FC, decreasing = TRUE), , drop = FALSE]
+  down_sorted <- gene_data[gene_data$log2FC < 0, , drop = FALSE]
+  down_sorted <- down_sorted[order(down_sorted$log2FC, decreasing = FALSE), , drop = FALSE]
+
+  up_topN   <- up_sorted$Gene[seq_len(min(topN, nrow(up_sorted)))]
+  down_topN <- down_sorted$Gene[seq_len(min(topN, nrow(down_sorted)))]
+
+  n_up_found   <- length(intersect(up_topN,   rownames(ref)))
+  n_down_found <- length(intersect(down_topN, rownames(ref)))
+  pct_up   <- round(n_up_found   / length(up_topN)   * 100, 1)
+  pct_down <- round(n_down_found / length(down_topN) * 100, 1)
+
+  message(sprintf(
+    "Found %d/%d up-regulated genes (%g%%) and %d/%d down-regulated genes (%g%%) in reference (top %d per direction)",
+    n_up_found,   length(up_topN),   pct_up,
+    n_down_found, length(down_topN), pct_down,
+    topN
+  ))
   
   if (length(common_up) == 0 || length(common_down) == 0) {
     stop("No matching genes found in reference data. Please check your signature genes.")
