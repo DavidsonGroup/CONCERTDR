@@ -22,8 +22,21 @@
 #' @param selected_drug_col Column used with \code{selected_drug}.
 #' @param pert_id_col Perturbation id column (default: \code{"sig_id"}).
 #' @param score_col Score column (default: \code{"Score"}).
-#' @param max_genes Maximum number of signature genes (default: 100).
+#' @param max_genes Maximum number of signature genes to use (default: 100).
+#'   When \code{split_direction = FALSE} (default) the first \code{max_genes}
+#'   rows of the signature file are taken. When \code{split_direction = TRUE}
+#'   the top \code{max_genes} up-regulated genes (by log2FC) and the top
+#'   \code{max_genes} down-regulated genes (by |log2FC|) are selected
+#'   independently, so the matrix may contain up to \code{2 * max_genes}
+#'   gene columns in total.
 #' @param max_perts Maximum number of perturbations (default: 60).
+#' @param split_direction Logical; if \code{TRUE}, apply \code{max_genes}
+#'   separately to the up-regulated (log2FC > 0) and down-regulated
+#'   (log2FC < 0) gene sets rather than to the combined signature.
+#'   The result contains up to \code{2 * max_genes} columns ordered
+#'   down-regulated then up-regulated, matching the layout expected by
+#'   \code{\link{plot_signature_direction_tile_barcode}} with
+#'   \code{split_direction = TRUE}. Default: \code{FALSE}.
 #' @param output_zscores Optional TSV path to save the matrix. \code{NULL}
 #'   to skip.
 #' @param verbose Logical; print progress messages.
@@ -72,6 +85,7 @@ extract_signature_zscores <- function(results_df,
                                       score_col         = "Score",
                                       max_genes         = 100,
                                       max_perts         = 60,
+                                      split_direction   = FALSE,
                                       output_zscores    = NULL,
                                       verbose           = TRUE) {
   if (!is.data.frame(results_df)) stop("results_df must be a data.frame")
@@ -231,7 +245,9 @@ extract_signature_zscores <- function(results_df,
   sig[[gene_col]]   <- toupper(as.character(sig[[gene_col]]))
   sig[[log2fc_col]] <- suppressWarnings(as.numeric(sig[[log2fc_col]]))
   sig <- sig[!is.na(sig[[gene_col]]) & nzchar(sig[[gene_col]]) & !is.na(sig[[log2fc_col]]), , drop = FALSE]
-  if (!is.null(max_genes)) sig <- utils::head(sig, max_genes)
+  # When split_direction = FALSE, truncate the whole signature upfront.
+  # When split_direction = TRUE, defer truncation to per-direction head() below.
+  if (!isTRUE(split_direction) && !is.null(max_genes)) sig <- utils::head(sig, max_genes)
   if (use_reference_df) {
     sig <- sig[sig[[gene_col]] %in% rownames(reference_mat), , drop = FALSE]
     if (nrow(sig) == 0) stop("No signature genes matched the row names of reference_df")
@@ -239,12 +255,18 @@ extract_signature_zscores <- function(results_df,
     sig <- sig[sig[[gene_col]] %in% names(gene_map), , drop = FALSE]
     if (nrow(sig) == 0) stop("No signature genes mapped to geneinfo gene_id")
   }
-  
+
   down <- sig[sig[[log2fc_col]] < 0, , drop = FALSE]
   down <- down[order(down[[log2fc_col]], decreasing = FALSE), , drop = FALSE]
   up   <- sig[sig[[log2fc_col]] > 0, , drop = FALSE]
   up   <- up[order(up[[log2fc_col]], decreasing = TRUE), , drop = FALSE]
-  
+
+  # Per-direction truncation: top max_genes most-negative and most-positive genes.
+  if (isTRUE(split_direction) && !is.null(max_genes)) {
+    down <- utils::head(down, max_genes)
+    up   <- utils::head(up,   max_genes)
+  }
+
   ordered_genes <- c(as.character(down[[gene_col]]), as.character(up[[gene_col]]))
   ordered_genes <- ordered_genes[nzchar(ordered_genes)]
   if (length(ordered_genes) == 0) stop("No ordered genes available after down/up split")

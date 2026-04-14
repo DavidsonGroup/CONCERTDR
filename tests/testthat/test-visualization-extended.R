@@ -282,6 +282,94 @@ test_that("reference_df accepts a plain matrix (no gene_symbol column)", {
   expect_gt(ncol(z$z_plot), 0)
 })
 
+# ── extract_signature_zscores: split_direction ───────────────────────────────
+
+test_that("split_direction = TRUE yields up to 2 * max_genes columns", {
+  skip_if_no_example()
+  max_n <- 3
+  z <- extract_signature_zscores(
+    results_df      = results_df(),
+    signature_file  = sig_file(),
+    reference_df    = ref_df(),
+    max_genes       = max_n,
+    split_direction = TRUE,
+    verbose         = FALSE
+  )
+  expect_lte(ncol(z$z_plot), 2L * max_n)
+})
+
+test_that("split_direction = TRUE: up and down genes both present in columns", {
+  skip_if_no_example()
+  z <- extract_signature_zscores(
+    results_df      = results_df(),
+    signature_file  = sig_file(),
+    reference_df    = ref_df(),
+    max_genes       = 5,
+    split_direction = TRUE,
+    verbose         = FALSE
+  )
+  lfc <- z$logfc_map[z$ordered_genes]
+  expect_true(any(lfc > 0), info = "expected at least one up-regulated gene")
+  expect_true(any(lfc < 0), info = "expected at least one down-regulated gene")
+})
+
+test_that("split_direction = TRUE: columns remain in down-then-up order", {
+  skip_if_no_example()
+  z <- extract_signature_zscores(
+    results_df      = results_df(),
+    signature_file  = sig_file(),
+    reference_df    = ref_df(),
+    max_genes       = 5,
+    split_direction = TRUE,
+    verbose         = FALSE
+  )
+  lfc    <- z$logfc_map[z$ordered_genes]
+  n_down <- sum(lfc < 0)
+  n_up   <- sum(lfc > 0)
+  expect_true(all(lfc[seq_len(n_down)] < 0))
+  expect_true(all(lfc[(n_down + 1L):(n_down + n_up)] > 0))
+})
+
+test_that("split_direction = TRUE selects by effect size within each direction", {
+  skip_if_no_example()
+  max_n <- 2
+  z <- extract_signature_zscores(
+    results_df      = results_df(),
+    signature_file  = sig_file(),
+    reference_df    = ref_df(),
+    max_genes       = max_n,
+    split_direction = TRUE,
+    verbose         = FALSE
+  )
+  lfc    <- z$logfc_map[z$ordered_genes]
+  down_lfc <- sort(lfc[lfc < 0])           # most-negative first
+  up_lfc   <- sort(lfc[lfc > 0], decreasing = TRUE)  # most-positive first
+  # down genes should be the max_n most-negative available
+  expect_lte(length(down_lfc), max_n)
+  expect_lte(length(up_lfc),   max_n)
+})
+
+test_that("split_direction = FALSE (default) behaviour is unchanged", {
+  skip_if_no_example()
+  max_n <- 4
+  z_default <- extract_signature_zscores(
+    results_df     = results_df(),
+    signature_file = sig_file(),
+    reference_df   = ref_df(),
+    max_genes      = max_n,
+    verbose        = FALSE
+  )
+  z_false <- extract_signature_zscores(
+    results_df      = results_df(),
+    signature_file  = sig_file(),
+    reference_df    = ref_df(),
+    max_genes       = max_n,
+    split_direction = FALSE,
+    verbose         = FALSE
+  )
+  expect_equal(colnames(z_default$z_plot), colnames(z_false$z_plot))
+})
+
 # ── plot_signature_direction_tile_barcode ─────────────────────────────────────
 
 test_that("plot_signature_direction_tile_barcode errors without ComplexHeatmap", {

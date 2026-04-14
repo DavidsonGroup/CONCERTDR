@@ -213,12 +213,13 @@ signature appears as warm colours on the left and cool colours on the right.
 
 ```{r extract-zscores-cp}
 z_cp <- extract_signature_zscores(
-  results_df     = views_cp$tech_view_all,
-  signature_file = sig_file,
-  reference_df   = cp_ref,
-  max_genes      = 100,
-  max_perts      = 50,
-  verbose        = FALSE
+  results_df      = views_cp$tech_view_all,
+  signature_file  = sig_file,
+  reference_df    = cp_ref,
+  max_genes       = 50,           # top-50 up-regulated + top-50 down-regulated
+  split_direction = TRUE,
+  max_perts       = 50,
+  verbose         = FALSE
 )
 cat("Heatmap matrix:", nrow(z_cp$z_plot), "perturbations ×",
     ncol(z_cp$z_plot), "genes\n")
@@ -348,12 +349,13 @@ head(views_ge$wetlab_gene_view[,
 
 ```{r extract-zscores-ge}
 z_ge <- extract_signature_zscores(
-  results_df     = views_ge$tech_view_all,
-  signature_file = sig_file,
-  reference_df   = ge_ref,
-  max_genes      = 100,
-  max_perts      = 50,
-  verbose        = FALSE
+  results_df      = views_ge$tech_view_all,
+  signature_file  = sig_file,
+  reference_df    = ge_ref,
+  max_genes       = 50,
+  split_direction = TRUE,
+  max_perts       = 50,
+  verbose         = FALSE
 )
 ```
 

@@ -2,14 +2,24 @@
 
 ## New features
 
-* **`plot_signature_direction_tile_barcode()` — split-direction mode**: New
-  `split_direction` argument (default `FALSE`). When set to `TRUE`, the heatmap
-  is split into two side-by-side panels: up-regulated genes (log2FC > 0) on the
-  left and down-regulated genes (log2FC < 0) on the right, with a small gap
-  between them. A companion `gap_width` argument (default `5` mm) controls the
-  gap size. Row clustering is performed on the full combined matrix so that both
-  panels display perturbations in the same order, allowing direct visual
-  comparison of activation and suppression patterns within a single figure.
+* **Split-direction mode for `extract_signature_zscores()` and
+  `plot_signature_direction_tile_barcode()`**: Both functions now accept a
+  `split_direction` argument (default `FALSE`).
+
+  - In `extract_signature_zscores()`, setting `split_direction = TRUE` applies
+    `max_genes` independently to the up-regulated (log2FC > 0) and
+    down-regulated (log2FC < 0) gene sets, so each direction contributes up to
+    `max_genes` columns (up to `2 * max_genes` total). Genes within each group
+    are ordered by effect size (most-positive first for up, most-negative first
+    for down) before truncation.
+
+  - In `plot_signature_direction_tile_barcode()`, setting `split_direction =
+    TRUE` renders the heatmap as two side-by-side panels: up-regulated genes on
+    the left and down-regulated genes on the right. A companion `gap_width`
+    argument (default `5` mm) controls the gap between panels. Row clustering is
+    performed on the full combined matrix so both panels display perturbations in
+    the same order, enabling direct visual comparison of activation and
+    suppression patterns within a single figure.
 
 # CONCERTDR 0.99.0
 

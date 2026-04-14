@@ -264,12 +264,23 @@ head(views$drug_context_summary) # drug × cell line breakdown
 Reads the GCTX once. Save the result and reuse it rather than repeating this call.
 
 ```r
+# Default: top max_genes rows from the combined signature
 z <- extract_signature_zscores(
   results_df     = views$tech_view_all,
   signature_file = signature,          # data.frame or file path
   max_genes      = 100,
   max_perts      = 60,
-  output_zscores = NULL                     # set a path if you want to save TSV
+  output_zscores = NULL                # set a path if you want to save TSV
+)
+
+# Split mode: top max_genes up-regulated AND top max_genes down-regulated genes
+# (up to 2 * max_genes columns total)
+z <- extract_signature_zscores(
+  results_df      = views$tech_view_all,
+  signature_file  = signature,
+  max_genes       = 50,                # 50 up + 50 down = up to 100 columns
+  split_direction = TRUE,
+  output_zscores  = NULL
 )
 ```
 
