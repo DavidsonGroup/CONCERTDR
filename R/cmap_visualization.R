@@ -407,6 +407,13 @@ extract_signature_zscores <- function(results_df,
 #'   (default: \code{"complete"}).
 #' @param show_col_dendrogram Logical; whether to draw a column dendrogram
 #'   when \code{cluster_cols = TRUE} (default: TRUE).
+#' @param split_direction Logical; if \code{TRUE}, split the heatmap into two
+#'   side-by-side panels — up-regulated genes (log2FC > 0) on the left and
+#'   down-regulated genes (log2FC < 0) on the right — with a small gap between
+#'   them. Row order is determined by clustering the full matrix so both panels
+#'   stay aligned. Default: \code{FALSE} (original single-panel behaviour).
+#' @param gap_width Width of the gap between the two panels in mm when
+#'   \code{split_direction = TRUE}. Default: \code{5}.
 #' @param precomputed Optional; the output of \code{\link{extract_signature_zscores}}.
 #'   If provided, skips all data-loading and GCTX-extraction steps - all
 #'   data-related arguments (\code{results_df}, \code{signature_file},
@@ -466,6 +473,8 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
                                                   cluster_cols = FALSE,
                                                   cluster_method_cols = "complete",
                                                   show_col_dendrogram = TRUE,
+                                                  split_direction     = FALSE,
+                                                  gap_width           = 5,
                                                   precomputed         = NULL,
                                                   save_png = FALSE,
                                                   output_png = "barcode_heatmap.png",
@@ -526,71 +535,36 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
   if (!requireNamespace("circlize", quietly = TRUE)) {
     stop("Package 'circlize' is required. Install with: install.packages('circlize')")
   }
-  
+
   # z-score colour scale (symmetric around 0)
   zlim <- max(abs(z_plot), na.rm = TRUE)
   if (!is.finite(zlim) || zlim == 0) zlim <- 10
   col_fun <- circlize::colorRamp2(c(-zlim, 0, zlim), c("#3B4CC0", "#F7F7F7", "#B40426"))
-  
+
   # signature log2FC colour strip — BrBG (teal → white → brown).
   # Teal/green = down-regulated (negative log2FC), brown/orange = up-regulated.
   # Completely different hue family from the coolwarm z-score palette so the
   # two scales are immediately distinguishable.
-  logfc_vals    <- as.numeric(logfc_map[ordered_genes])
-  lim           <- max(abs(logfc_vals), na.rm = TRUE)
+  logfc_vals_named        <- as.numeric(logfc_map[ordered_genes])
+  names(logfc_vals_named) <- ordered_genes
+  lim           <- max(abs(logfc_vals_named), na.rm = TRUE)
   if (!is.finite(lim) || lim == 0) lim <- 1
   logfc_col_fun <- circlize::colorRamp2(c(-lim, 0, lim), c("#01665E", "#F5F5F5", "#8C510A"))
-  
-  top_ann <- ComplexHeatmap::HeatmapAnnotation(
-    "Signature log2FC" = logfc_vals,
-    col = list("Signature log2FC" = logfc_col_fun),
-    annotation_legend_param = list(
-      "Signature log2FC" = list(
-        title      = "Signature log2FC",
-        title_gp   = grid::gpar(fontsize = 9),
-        labels_gp  = grid::gpar(fontsize = 8)
-      )
-    ),
-    show_annotation_name = TRUE,
-    annotation_name_gp   = grid::gpar(fontsize = 9)
+
+  ann_legend_params <- list(
+    "Signature log2FC" = list(
+      title     = "Signature log2FC",
+      title_gp  = grid::gpar(fontsize = 9),
+      labels_gp = grid::gpar(fontsize = 8)
+    )
   )
-  
+
   ttl <- if (is.null(selected_drug)) {
     paste0("Top ", nrow(z_plot), " perturbations by ", score_col)
   } else {
     paste0(selected_drug, " \u2013 Top ", nrow(z_plot), " perturbations by ", score_col)
   }
-  
-  ht <- ComplexHeatmap::Heatmap(
-    z_plot,
-    name                   = "z-score",
-    col                    = col_fun,
-    cluster_rows           = isTRUE(cluster_rows),
-    clustering_method_rows = cluster_method,
-    cluster_columns           = isTRUE(cluster_cols),
-    clustering_method_columns = cluster_method_cols,
-    show_row_dend          = isTRUE(show_row_dendrogram) && isTRUE(cluster_rows),
-    show_column_dend       = isTRUE(show_col_dendrogram) && isTRUE(cluster_cols),
-    top_annotation         = top_ann,
-    show_row_names         = TRUE,
-    show_column_names      = TRUE,
-    row_names_gp           = grid::gpar(fontsize = 8),
-    row_names_max_width    = grid::unit(7, "cm"),
-    column_names_gp        = grid::gpar(fontsize = 8),
-    column_names_rot       = 60,
-    column_title           = ttl,
-    column_title_gp        = grid::gpar(fontsize = 11, fontface = "bold"),
-    row_title              = "Perturbations",
-    row_title_gp           = grid::gpar(fontsize = 10),
-    heatmap_legend_param   = list(
-      title     = "z-score",
-      title_gp  = grid::gpar(fontsize = 9),
-      labels_gp = grid::gpar(fontsize = 8)
-    ),
-    use_raster    = TRUE,
-    raster_quality = 2
-  )
-  
+
   # dynamic figure size: scale with data dimensions if not supplied
   n_cols <- ncol(z_plot)
   n_rows <- nrow(z_plot)
@@ -598,16 +572,163 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
   auto_height <- max(8,  2 + n_rows * 0.28)         # 2in base + ~0.28in/perturbation
   fig_width  <- if (!is.null(width))  width  else auto_width
   fig_height <- if (!is.null(height)) height else auto_height
-  
-  draw_fn <- function() {
-    ComplexHeatmap::draw(
-      ht,
-      heatmap_legend_side    = "right",
-      annotation_legend_side = "right",
-      padding                = grid::unit(c(5, 20, 8, 5), "mm")
-    )
+
+  # decide whether to use split mode
+  up_genes   <- ordered_genes[logfc_vals_named > 0]
+  down_genes <- ordered_genes[logfc_vals_named < 0]
+  use_split  <- isTRUE(split_direction) && length(up_genes) > 0 && length(down_genes) > 0
+  if (isTRUE(split_direction) && !use_split) {
+    warning("split_direction = TRUE but all genes are in the same direction; drawing single heatmap")
   }
-  
+
+  if (!use_split) {
+    # ── single heatmap (original behaviour) ──────────────────────────────────
+    top_ann <- ComplexHeatmap::HeatmapAnnotation(
+      "Signature log2FC" = logfc_vals_named,
+      col                = list("Signature log2FC" = logfc_col_fun),
+      annotation_legend_param = ann_legend_params,
+      show_annotation_name = TRUE,
+      annotation_name_gp   = grid::gpar(fontsize = 9)
+    )
+
+    ht <- ComplexHeatmap::Heatmap(
+      z_plot,
+      name                      = "z-score",
+      col                       = col_fun,
+      cluster_rows              = isTRUE(cluster_rows),
+      clustering_method_rows    = cluster_method,
+      cluster_columns           = isTRUE(cluster_cols),
+      clustering_method_columns = cluster_method_cols,
+      show_row_dend             = isTRUE(show_row_dendrogram) && isTRUE(cluster_rows),
+      show_column_dend          = isTRUE(show_col_dendrogram) && isTRUE(cluster_cols),
+      top_annotation            = top_ann,
+      show_row_names            = TRUE,
+      show_column_names         = TRUE,
+      row_names_gp              = grid::gpar(fontsize = 8),
+      row_names_max_width       = grid::unit(7, "cm"),
+      column_names_gp           = grid::gpar(fontsize = 8),
+      column_names_rot          = 60,
+      column_title              = ttl,
+      column_title_gp           = grid::gpar(fontsize = 11, fontface = "bold"),
+      row_title                 = "Perturbations",
+      row_title_gp              = grid::gpar(fontsize = 10),
+      heatmap_legend_param      = list(
+        title     = "z-score",
+        title_gp  = grid::gpar(fontsize = 9),
+        labels_gp = grid::gpar(fontsize = 8)
+      ),
+      use_raster     = TRUE,
+      raster_quality = 2
+    )
+
+    draw_fn <- function() {
+      ComplexHeatmap::draw(
+        ht,
+        heatmap_legend_side    = "right",
+        annotation_legend_side = "right",
+        padding                = grid::unit(c(5, 20, 8, 5), "mm")
+      )
+    }
+
+  } else {
+    # ── split heatmap: up-regulated (left) | down-regulated (right) ──────────
+    z_up   <- z_plot[, up_genes,   drop = FALSE]
+    z_down <- z_plot[, down_genes, drop = FALSE]
+    n_up   <- length(up_genes)
+    n_down <- length(down_genes)
+
+    # cluster rows on the *full* matrix so both panels share the same row order
+    if (isTRUE(cluster_rows)) {
+      row_clust <- hclust(dist(z_plot), method = cluster_method)
+      row_ord   <- row_clust$order
+    } else {
+      row_ord <- seq_len(nrow(z_plot))
+    }
+
+    top_ann_up <- ComplexHeatmap::HeatmapAnnotation(
+      "Signature log2FC" = as.numeric(logfc_vals_named[up_genes]),
+      col                = list("Signature log2FC" = logfc_col_fun),
+      annotation_legend_param = ann_legend_params,
+      show_annotation_name = TRUE,
+      annotation_name_gp   = grid::gpar(fontsize = 9)
+    )
+    # suppress duplicate legend on the right panel
+    top_ann_down <- ComplexHeatmap::HeatmapAnnotation(
+      "Signature log2FC" = as.numeric(logfc_vals_named[down_genes]),
+      col                = list("Signature log2FC" = logfc_col_fun),
+      annotation_legend_param = ann_legend_params,
+      show_legend          = FALSE,
+      show_annotation_name = FALSE
+    )
+
+    ht_up <- ComplexHeatmap::Heatmap(
+      z_up,
+      name                      = "z-score",
+      col                       = col_fun,
+      cluster_rows              = if (isTRUE(cluster_rows)) row_clust else FALSE,
+      clustering_method_rows    = cluster_method,
+      show_row_dend             = isTRUE(show_row_dendrogram) && isTRUE(cluster_rows),
+      cluster_columns           = isTRUE(cluster_cols),
+      clustering_method_columns = cluster_method_cols,
+      show_column_dend          = isTRUE(show_col_dendrogram) && isTRUE(cluster_cols),
+      top_annotation            = top_ann_up,
+      show_row_names            = TRUE,
+      show_column_names         = TRUE,
+      row_names_gp              = grid::gpar(fontsize = 8),
+      row_names_max_width       = grid::unit(7, "cm"),
+      column_names_gp           = grid::gpar(fontsize = 8),
+      column_names_rot          = 60,
+      column_title              = paste0("Up-regulated (", n_up, " genes)"),
+      column_title_gp           = grid::gpar(fontsize = 10, fontface = "bold", col = "#8C510A"),
+      row_title                 = "Perturbations",
+      row_title_gp              = grid::gpar(fontsize = 10),
+      heatmap_legend_param      = list(
+        title     = "z-score",
+        title_gp  = grid::gpar(fontsize = 9),
+        labels_gp = grid::gpar(fontsize = 8)
+      ),
+      use_raster     = TRUE,
+      raster_quality = 2
+    )
+
+    ht_down <- ComplexHeatmap::Heatmap(
+      z_down,
+      name                      = "z-score-down",
+      col                       = col_fun,
+      # use pre-computed row order so rows align with the left panel
+      cluster_rows              = FALSE,
+      row_order                 = row_ord,
+      show_row_dend             = FALSE,
+      cluster_columns           = isTRUE(cluster_cols),
+      clustering_method_columns = cluster_method_cols,
+      show_column_dend          = isTRUE(show_col_dendrogram) && isTRUE(cluster_cols),
+      top_annotation            = top_ann_down,
+      show_row_names            = FALSE,
+      show_column_names         = TRUE,
+      column_names_gp           = grid::gpar(fontsize = 8),
+      column_names_rot          = 60,
+      column_title              = paste0("Down-regulated (", n_down, " genes)"),
+      column_title_gp           = grid::gpar(fontsize = 10, fontface = "bold", col = "#01665E"),
+      show_heatmap_legend       = FALSE,
+      use_raster                = TRUE,
+      raster_quality            = 2
+    )
+
+    ht_list <- ht_up + ht_down
+
+    draw_fn <- function() {
+      ComplexHeatmap::draw(
+        ht_list,
+        heatmap_legend_side    = "right",
+        annotation_legend_side = "right",
+        padding                = grid::unit(c(5, 20, 8, 5), "mm"),
+        ht_gap                 = grid::unit(gap_width, "mm"),
+        column_title           = ttl,
+        column_title_gp        = grid::gpar(fontsize = 11, fontface = "bold")
+      )
+    }
+  }
+
   if (isTRUE(save_png)) {
     grDevices::png(filename = output_png, width = fig_width, height = fig_height,
                    units = "in", res = dpi)
@@ -617,7 +738,7 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
   } else {
     draw_fn()
   }
-  
+
   invisible(list(
     z_plot        = z_plot,
     ordered_genes = ordered_genes,

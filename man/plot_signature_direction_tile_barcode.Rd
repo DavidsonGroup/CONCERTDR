@@ -24,6 +24,8 @@ plot_signature_direction_tile_barcode(
   cluster_cols = FALSE,
   cluster_method_cols = "complete",
   show_col_dendrogram = TRUE,
+  split_direction = FALSE,
+  gap_width = 5,
   precomputed = NULL,
   save_png = FALSE,
   output_png = "barcode_heatmap.png",
@@ -96,6 +98,15 @@ are kept in signature direction order: down then up).}
 
 \item{show_col_dendrogram}{Logical; whether to draw a column dendrogram
 when \code{cluster_cols = TRUE} (default: TRUE).}
+
+\item{split_direction}{Logical; if \code{TRUE}, split the heatmap into two
+side-by-side panels — up-regulated genes (log2FC > 0) on the left and
+down-regulated genes (log2FC < 0) on the right — with a small gap between
+them. Row order is determined by clustering the full matrix so both panels
+stay aligned. Default: \code{FALSE} (original single-panel behaviour).}
+
+\item{gap_width}{Width of the gap between the two panels in mm when
+\code{split_direction = TRUE}. Default: \code{5}.}
 
 \item{precomputed}{Optional; the output of \code{\link{extract_signature_zscores}}.
 If provided, skips all data-loading and GCTX-extraction steps - all

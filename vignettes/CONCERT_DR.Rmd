@@ -241,6 +241,29 @@ if (requireNamespace("ComplexHeatmap", quietly = TRUE) &&
 }
 ```
 
+### Split-direction heatmap
+
+Setting `split_direction = TRUE` divides the plot into two panels: genes with
+positive log2FC (up-regulated in the disease) on the left, and genes with
+negative log2FC (down-regulated) on the right. Both panels share the same
+perturbation row order, determined by hierarchical clustering of the full
+gene matrix, so patterns on each side can be compared directly.
+
+```{r heatmap-compounds-split, fig.width=16, fig.height=10}
+if (requireNamespace("ComplexHeatmap", quietly = TRUE) &&
+    requireNamespace("circlize",       quietly = TRUE)) {
+  plot_signature_direction_tile_barcode(
+    precomputed         = z_cp,
+    split_direction     = TRUE,   # up-regulated panel (left) | down-regulated panel (right)
+    gap_width           = 6,      # mm gap between the two panels
+    cluster_rows        = TRUE,
+    show_row_dendrogram = TRUE,
+    cluster_cols        = FALSE,
+    verbose             = FALSE
+  )
+}
+```
+
 # Use Case 2 — Finding Therapeutic Gene Targets
 
 Gene overexpression and CRISPR knockout perturbations in CMap can identify
@@ -343,6 +366,22 @@ if (requireNamespace("ComplexHeatmap", quietly = TRUE) &&
     show_row_dendrogram = TRUE,
     cluster_cols        = FALSE,
     verbose             = FALSE
+  )
+}
+```
+
+### Split-direction heatmap for gene perturbations
+
+```{r heatmap-gene-perts-split, fig.width=16, fig.height=10}
+if (requireNamespace("ComplexHeatmap", quietly = TRUE) &&
+    requireNamespace("circlize",       quietly = TRUE)) {
+  plot_signature_direction_tile_barcode(
+    precomputed     = z_ge,
+    split_direction = TRUE,
+    gap_width       = 6,
+    cluster_rows    = TRUE,
+    cluster_cols    = FALSE,
+    verbose         = FALSE
   )
 }
 ```

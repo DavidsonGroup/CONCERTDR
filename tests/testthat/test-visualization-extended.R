@@ -406,6 +406,140 @@ test_that("plot_signature_direction_tile_barcode errors on malformed precomputed
   )
 })
 
+# ── split_direction mode ──────────────────────────────────────────────────────
+
+test_that("split_direction = TRUE renders without error", {
+  skip_if_no_example()
+  skip_if_not_installed("ComplexHeatmap")
+  skip_if_not_installed("circlize")
+
+  z <- extract_signature_zscores(
+    results_df     = results_df(),
+    signature_file = sig_file(),
+    reference_df   = ref_df(),
+    max_genes      = 10,
+    max_perts      = 5,
+    verbose        = FALSE
+  )
+  expect_no_error(
+    plot_signature_direction_tile_barcode(
+      precomputed     = z,
+      split_direction = TRUE,
+      save_png        = FALSE,
+      cluster_rows    = FALSE,
+      verbose         = FALSE
+    )
+  )
+})
+
+test_that("split_direction = TRUE returns invisible list with correct names", {
+  skip_if_no_example()
+  skip_if_not_installed("ComplexHeatmap")
+  skip_if_not_installed("circlize")
+
+  z <- extract_signature_zscores(
+    results_df     = results_df(),
+    signature_file = sig_file(),
+    reference_df   = ref_df(),
+    max_genes      = 10,
+    max_perts      = 5,
+    verbose        = FALSE
+  )
+  out <- plot_signature_direction_tile_barcode(
+    precomputed     = z,
+    split_direction = TRUE,
+    save_png        = FALSE,
+    cluster_rows    = FALSE,
+    verbose         = FALSE
+  )
+  expect_type(out, "list")
+  expect_named(out, c("z_plot", "ordered_genes", "sig_ids", "output_png", "output_zscores"),
+               ignore.order = TRUE)
+})
+
+test_that("split_direction = TRUE saves PNG when save_png = TRUE", {
+  skip_if_no_example()
+  skip_if_not_installed("ComplexHeatmap")
+  skip_if_not_installed("circlize")
+
+  tmp <- tempfile(fileext = ".png")
+  on.exit(unlink(tmp))
+
+  z <- extract_signature_zscores(
+    results_df     = results_df(),
+    signature_file = sig_file(),
+    reference_df   = ref_df(),
+    max_genes      = 10,
+    max_perts      = 5,
+    verbose        = FALSE
+  )
+  plot_signature_direction_tile_barcode(
+    precomputed     = z,
+    split_direction = TRUE,
+    gap_width       = 8,
+    save_png        = TRUE,
+    output_png      = tmp,
+    cluster_rows    = FALSE,
+    verbose         = FALSE
+  )
+  expect_true(file.exists(tmp))
+  expect_gt(file.info(tmp)$size, 0)
+})
+
+test_that("split_direction = TRUE with row clustering aligns both panels", {
+  skip_if_no_example()
+  skip_if_not_installed("ComplexHeatmap")
+  skip_if_not_installed("circlize")
+
+  z <- extract_signature_zscores(
+    results_df     = results_df(),
+    signature_file = sig_file(),
+    reference_df   = ref_df(),
+    max_genes      = 10,
+    max_perts      = 5,
+    verbose        = FALSE
+  )
+  # cluster_rows = TRUE triggers the full-matrix hclust path; must not error
+  expect_no_error(
+    plot_signature_direction_tile_barcode(
+      precomputed     = z,
+      split_direction = TRUE,
+      cluster_rows    = TRUE,
+      save_png        = FALSE,
+      verbose         = FALSE
+    )
+  )
+})
+
+test_that("split_direction = TRUE with all-unidirectional signature falls back with warning", {
+  skip_if_no_example()
+  skip_if_not_installed("ComplexHeatmap")
+  skip_if_not_installed("circlize")
+
+  z <- extract_signature_zscores(
+    results_df     = results_df(),
+    signature_file = sig_file(),
+    reference_df   = ref_df(),
+    max_genes      = 10,
+    max_perts      = 5,
+    verbose        = FALSE
+  )
+  # Force all logfc_map values positive so there are no down-regulated genes
+  z_up_only          <- z
+  z_up_only$logfc_map <- abs(z$logfc_map)
+
+  expect_warning(
+    plot_signature_direction_tile_barcode(
+      precomputed     = z_up_only,
+      split_direction = TRUE,
+      save_png        = FALSE,
+      cluster_rows    = FALSE,
+      verbose         = FALSE
+    ),
+    "single heatmap"
+  )
+})
+
 # ── subset_siginfo_beta ───────────────────────────────────────────────────────
 
 make_siginfo_file <- function() {

@@ -1,3 +1,16 @@
+# CONCERTDR 0.99.1
+
+## New features
+
+* **`plot_signature_direction_tile_barcode()` — split-direction mode**: New
+  `split_direction` argument (default `FALSE`). When set to `TRUE`, the heatmap
+  is split into two side-by-side panels: up-regulated genes (log2FC > 0) on the
+  left and down-regulated genes (log2FC < 0) on the right, with a small gap
+  between them. A companion `gap_width` argument (default `5` mm) controls the
+  gap size. Row clustering is performed on the full combined matrix so that both
+  panels display perturbations in the same order, allowing direct visual
+  comparison of activation and suppression patterns within a single figure.
+
 # CONCERTDR 0.99.0
 
 ## Bioconductor submission

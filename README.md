@@ -285,6 +285,7 @@ The returned list contains:
 Pass `precomputed = z` to skip any file I/O on repeat calls.
 
 ```r
+# Default: all genes in one panel (down-regulated → up-regulated left to right)
 plot_signature_direction_tile_barcode(
   precomputed         = z,
   cluster_rows        = TRUE,
@@ -293,7 +294,21 @@ plot_signature_direction_tile_barcode(
   save_png            = TRUE,    # default is FALSE
   output_png          = "results/barcode_heatmap.png"
 )
+
+# Split mode: up-regulated panel (left) | down-regulated panel (right)
+plot_signature_direction_tile_barcode(
+  precomputed     = z,
+  split_direction = TRUE,   # split into up / down panels
+  gap_width       = 5,      # mm gap between panels (default 5)
+  cluster_rows    = TRUE,
+  save_png        = TRUE,
+  output_png      = "results/barcode_heatmap_split.png"
+)
 ```
+
+In split mode, row clustering is performed on the full combined matrix so that
+both panels share the same perturbation order, enabling direct comparison of
+up- and down-regulation patterns side by side.
 
 Colour scheme: coolwarm (`#3B4CC0` → white → `#B40426`) for z-scores; BrBG
 (`#01665E` → white → `#8C510A`) for the log2FC annotation bar. Figure dimensions
