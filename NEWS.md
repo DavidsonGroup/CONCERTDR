@@ -32,6 +32,27 @@
     the same order, enabling direct visual comparison of activation and
     suppression patterns within a single figure.
 
+* **Reference-intersection highlighting in `plot_signature_direction_tile_barcode()`**:
+  When a `reference_df` is supplied, the function now computes the intersection
+  of the signature genes with genes present in `reference_df` and visually
+  distinguishes the two groups:
+
+  - Genes **not** found in `reference_df` are shown in a muted silver-gray
+    colour (`#CCCCCC`) with dimmed column labels, making the overlap immediately
+    apparent without removing any genes from the display.
+
+  - When `cluster_cols = FALSE` (default), all genes are kept in their original
+    signature order (down-regulated first, then up-regulated); a `cell_fun`
+    overlay is used to gray out non-intersecting columns without disturbing the
+    column arrangement.
+
+  - When `cluster_cols = TRUE`, the intersecting genes form a clustered panel
+    and the non-intersecting genes are appended as a separate un-clustered panel
+    in their original signature order (muted colour, labeled *not in ref*).
+    When `split_direction = TRUE` is also active, this logic is applied within
+    each direction sub-panel, yielding up to four panels in total
+    (up-in-ref | up-not-in-ref | down-in-ref | down-not-in-ref).
+
 # CONCERTDR 0.99.0
 
 ## Bioconductor submission

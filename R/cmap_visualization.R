@@ -564,7 +564,34 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
       ")"
     )
   }
-  
+
+  # ── Reference intersection for visual differentiation ──────────────────────
+  # Genes in ordered_genes that are NOT in reference_df are shown in a muted
+  # silver-gray colour.  When cluster_cols = TRUE, only the intersecting genes
+  # are clustered; the non-intersecting genes are kept in their original
+  # signature order and appended as a separate un-clustered panel.
+  ref_viz_genes <- NULL
+  if (!is.null(reference_df)) {
+    if (is.data.frame(reference_df) && "gene_symbol" %in% names(reference_df)) {
+      ref_viz_genes <- toupper(as.character(reference_df$gene_symbol))
+    } else if (is.data.frame(reference_df) || is.matrix(reference_df)) {
+      ref_viz_genes <- toupper(as.character(rownames(reference_df)))
+    }
+    ref_viz_genes <- ref_viz_genes[!is.na(ref_viz_genes) & nzchar(ref_viz_genes)]
+    if (length(ref_viz_genes) == 0) ref_viz_genes <- NULL
+  }
+
+  in_ref  <- if (!is.null(ref_viz_genes)) toupper(ordered_genes) %in% ref_viz_genes
+             else rep(TRUE, length(ordered_genes))
+  names(in_ref) <- ordered_genes
+  any_out <- any(!in_ref)
+
+  if (verbose && any_out) {
+    message(sum(in_ref), " / ", length(ordered_genes),
+            " signature genes found in reference_df; ",
+            sum(!in_ref), " will be shown in muted colour")
+  }
+
   # ── ComplexHeatmap ─────────────────────────────────────────────────────────
   if (!requireNamespace("ComplexHeatmap", quietly = TRUE)) {
     stop(
@@ -581,6 +608,11 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
   if (!is.finite(zlim) || zlim == 0) zlim <- 10
   col_fun <- circlize::colorRamp2(c(-zlim, 0, zlim), c("#3B4CC0", "#F7F7F7", "#B40426"))
 
+  # Muted (silver-gray) colour for genes not present in reference_df
+  muted_col     <- "#CCCCCC"
+  muted_zfun    <- circlize::colorRamp2(c(-zlim, 0, zlim),
+                                        c(muted_col, "#E8E8E8", muted_col))
+
   # signature log2FC colour strip — BrBG (teal → white → brown).
   # Teal/green = down-regulated (negative log2FC), brown/orange = up-regulated.
   # Completely different hue family from the coolwarm z-score palette so the
@@ -589,7 +621,8 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
   names(logfc_vals_named) <- ordered_genes
   lim           <- max(abs(logfc_vals_named), na.rm = TRUE)
   if (!is.finite(lim) || lim == 0) lim <- 1
-  logfc_col_fun <- circlize::colorRamp2(c(-lim, 0, lim), c("#01665E", "#F5F5F5", "#8C510A"))
+  logfc_col_fun      <- circlize::colorRamp2(c(-lim, 0, lim), c("#01665E", "#F5F5F5", "#8C510A"))
+  muted_logfc_col    <- circlize::colorRamp2(c(-lim, 0, lim), c("#D0D0D0", "#E8E8E8", "#D0D0D0"))
 
   ann_legend_params <- list(
     "Signature log2FC" = list(
@@ -621,45 +654,143 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
     warning("split_direction = TRUE but all genes are in the same direction; drawing single heatmap")
   }
 
-  if (!use_split) {
-    # ── single heatmap (original behaviour) ──────────────────────────────────
-    top_ann <- ComplexHeatmap::HeatmapAnnotation(
-      "Signature log2FC" = logfc_vals_named,
-      col                = list("Signature log2FC" = logfc_col_fun),
-      annotation_legend_param = ann_legend_params,
-      show_annotation_name = TRUE,
-      annotation_name_gp   = grid::gpar(fontsize = 9)
-    )
+  # ── helper: cell_fun that grays out specific column indices ─────────────────
+  make_cell_fn <- function(non_ref_idx) {
+    if (length(non_ref_idx) == 0L) return(NULL)
+    force(non_ref_idx)
+    function(j, i, x, y, width, height, fill) {
+      if (j %in% non_ref_idx) {
+        grid::grid.rect(x, y, width, height,
+                        gp = grid::gpar(fill = muted_col, col = NA))
+      }
+    }
+  }
 
-    ht <- ComplexHeatmap::Heatmap(
-      z_plot,
-      name                      = "z-score",
-      col                       = col_fun,
-      cluster_rows              = isTRUE(cluster_rows),
-      clustering_method_rows    = cluster_method,
-      cluster_columns           = isTRUE(cluster_cols),
-      clustering_method_columns = cluster_method_cols,
-      show_row_dend             = isTRUE(show_row_dendrogram) && isTRUE(cluster_rows),
-      show_column_dend          = isTRUE(show_col_dendrogram) && isTRUE(cluster_cols),
-      top_annotation            = top_ann,
-      show_row_names            = TRUE,
-      show_column_names         = TRUE,
-      row_names_gp              = grid::gpar(fontsize = 8),
-      row_names_max_width       = grid::unit(7, "cm"),
-      column_names_gp           = grid::gpar(fontsize = 8),
-      column_names_rot          = 60,
-      column_title              = ttl,
-      column_title_gp           = grid::gpar(fontsize = 11, fontface = "bold"),
-      row_title                 = "Perturbations",
-      row_title_gp              = grid::gpar(fontsize = 10),
-      heatmap_legend_param      = list(
-        title     = "z-score",
-        title_gp  = grid::gpar(fontsize = 9),
-        labels_gp = grid::gpar(fontsize = 8)
-      ),
-      use_raster     = TRUE,
-      raster_quality = 2
+  # ── helper: muted annotation for out-of-ref genes (no legend, no name) ──────
+  make_muted_ann <- function(lfc_vec) {
+    ComplexHeatmap::HeatmapAnnotation(
+      "Signature log2FC" = as.numeric(lfc_vec),
+      col                = list("Signature log2FC" = muted_logfc_col),
+      show_annotation_name = FALSE,
+      show_legend          = FALSE
     )
+  }
+
+  if (!use_split) {
+    # ── single heatmap (no direction split) ──────────────────────────────────
+
+    if (isTRUE(cluster_cols) && any_out) {
+      # Two panels: in-ref genes (clustered, normal colour) | out-of-ref genes
+      # (original signature order, muted colour).
+      genes_in  <- ordered_genes[in_ref]
+      genes_out <- ordered_genes[!in_ref]
+      z_in  <- z_plot[, genes_in,  drop = FALSE]
+      z_out <- z_plot[, genes_out, drop = FALSE]
+
+      ht_in <- ComplexHeatmap::Heatmap(
+        z_in,
+        name                      = "z-score",
+        col                       = col_fun,
+        cluster_rows              = isTRUE(cluster_rows),
+        clustering_method_rows    = cluster_method,
+        cluster_columns           = TRUE,
+        clustering_method_columns = cluster_method_cols,
+        show_row_dend             = isTRUE(show_row_dendrogram) && isTRUE(cluster_rows),
+        show_column_dend          = isTRUE(show_col_dendrogram),
+        top_annotation            = ComplexHeatmap::HeatmapAnnotation(
+          "Signature log2FC" = as.numeric(logfc_vals_named[genes_in]),
+          col                = list("Signature log2FC" = logfc_col_fun),
+          annotation_legend_param = ann_legend_params,
+          show_annotation_name = TRUE,
+          annotation_name_gp   = grid::gpar(fontsize = 9)
+        ),
+        show_row_names            = TRUE,
+        show_column_names         = TRUE,
+        row_names_gp              = grid::gpar(fontsize = 8),
+        row_names_max_width       = grid::unit(7, "cm"),
+        column_names_gp           = grid::gpar(fontsize = 8),
+        column_names_rot          = 60,
+        column_title              = ttl,
+        column_title_gp           = grid::gpar(fontsize = 11, fontface = "bold"),
+        row_title                 = "Perturbations",
+        row_title_gp              = grid::gpar(fontsize = 10),
+        heatmap_legend_param      = list(
+          title     = "z-score",
+          title_gp  = grid::gpar(fontsize = 9),
+          labels_gp = grid::gpar(fontsize = 8)
+        ),
+        use_raster     = TRUE,
+        raster_quality = 2
+      )
+
+      ht_out <- ComplexHeatmap::Heatmap(
+        z_out,
+        name                   = "z-score (not in ref)",
+        col                    = muted_zfun,
+        cluster_rows           = FALSE,
+        cluster_columns        = FALSE,
+        column_order           = seq_len(ncol(z_out)),
+        show_row_dend          = FALSE,
+        show_column_dend       = FALSE,
+        top_annotation         = make_muted_ann(logfc_vals_named[genes_out]),
+        show_row_names         = FALSE,
+        show_column_names      = TRUE,
+        column_names_gp        = grid::gpar(fontsize = 8, col = "#999999"),
+        column_names_rot       = 60,
+        column_title           = "(not in ref)",
+        column_title_gp        = grid::gpar(fontsize = 9, col = "#999999",
+                                            fontface = "italic"),
+        show_heatmap_legend    = FALSE,
+        use_raster     = TRUE,
+        raster_quality = 2
+      )
+
+      ht <- ht_in + ht_out
+
+    } else {
+      # cluster_cols = FALSE (or no out-of-ref genes): single panel in original
+      # gene order.  Non-ref columns are overlaid with a gray rectangle via
+      # cell_fun; their column names are dimmed.
+      non_ref_idx     <- which(!in_ref)
+      col_name_colors <- ifelse(in_ref, "black", "#AAAAAA")
+
+      ht <- ComplexHeatmap::Heatmap(
+        z_plot,
+        name                      = "z-score",
+        col                       = col_fun,
+        cluster_rows              = isTRUE(cluster_rows),
+        clustering_method_rows    = cluster_method,
+        cluster_columns           = isTRUE(cluster_cols),
+        clustering_method_columns = cluster_method_cols,
+        show_row_dend             = isTRUE(show_row_dendrogram) && isTRUE(cluster_rows),
+        show_column_dend          = isTRUE(show_col_dendrogram) && isTRUE(cluster_cols),
+        top_annotation            = ComplexHeatmap::HeatmapAnnotation(
+          "Signature log2FC" = logfc_vals_named,
+          col                = list("Signature log2FC" = logfc_col_fun),
+          annotation_legend_param = ann_legend_params,
+          show_annotation_name = TRUE,
+          annotation_name_gp   = grid::gpar(fontsize = 9)
+        ),
+        show_row_names            = TRUE,
+        show_column_names         = TRUE,
+        row_names_gp              = grid::gpar(fontsize = 8),
+        row_names_max_width       = grid::unit(7, "cm"),
+        column_names_gp           = grid::gpar(fontsize = 8, col = col_name_colors),
+        column_names_rot          = 60,
+        column_title              = ttl,
+        column_title_gp           = grid::gpar(fontsize = 11, fontface = "bold"),
+        row_title                 = "Perturbations",
+        row_title_gp              = grid::gpar(fontsize = 10),
+        heatmap_legend_param      = list(
+          title     = "z-score",
+          title_gp  = grid::gpar(fontsize = 9),
+          labels_gp = grid::gpar(fontsize = 8)
+        ),
+        cell_fun       = make_cell_fn(non_ref_idx),
+        use_raster     = length(non_ref_idx) == 0L,
+        raster_quality = 2
+      )
+    }
 
     draw_fn <- function() {
       ComplexHeatmap::draw(
@@ -671,13 +802,13 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
     }
 
   } else {
-    # ── split heatmap: up-regulated (left) | down-regulated (right) ──────────
+    # ── split heatmap: up-regulated | down-regulated ──────────────────────────
     z_up   <- z_plot[, up_genes,   drop = FALSE]
     z_down <- z_plot[, down_genes, drop = FALSE]
     n_up   <- length(up_genes)
     n_down <- length(down_genes)
 
-    # cluster rows on the *full* matrix so both panels share the same row order
+    # row clustering on the *full* matrix so all panels share the same row order
     if (isTRUE(cluster_rows)) {
       row_clust <- hclust(dist(z_plot), method = cluster_method)
       row_ord   <- row_clust$order
@@ -685,76 +816,238 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
       row_ord <- seq_len(nrow(z_plot))
     }
 
-    top_ann_up <- ComplexHeatmap::HeatmapAnnotation(
-      "Signature log2FC" = as.numeric(logfc_vals_named[up_genes]),
-      col                = list("Signature log2FC" = logfc_col_fun),
-      annotation_legend_param = ann_legend_params,
-      show_annotation_name = TRUE,
-      annotation_name_gp   = grid::gpar(fontsize = 9)
-    )
-    # suppress duplicate legend on the right panel
-    top_ann_down <- ComplexHeatmap::HeatmapAnnotation(
-      "Signature log2FC" = as.numeric(logfc_vals_named[down_genes]),
-      col                = list("Signature log2FC" = logfc_col_fun),
-      annotation_legend_param = ann_legend_params,
-      show_legend          = FALSE,
-      show_annotation_name = FALSE
-    )
+    # which up/down genes are in ref?
+    up_in_ref   <- in_ref[up_genes]    # named logical, length = n_up
+    down_in_ref <- in_ref[down_genes]  # named logical, length = n_down
 
-    ht_up <- ComplexHeatmap::Heatmap(
-      z_up,
-      name                      = "z-score",
-      col                       = col_fun,
-      cluster_rows              = if (isTRUE(cluster_rows)) row_clust else FALSE,
-      clustering_method_rows    = cluster_method,
-      show_row_dend             = isTRUE(show_row_dendrogram) && isTRUE(cluster_rows),
-      cluster_columns           = isTRUE(cluster_cols),
-      clustering_method_columns = cluster_method_cols,
-      show_column_dend          = isTRUE(show_col_dendrogram) && isTRUE(cluster_cols),
-      top_annotation            = top_ann_up,
-      show_row_names            = FALSE,        # labels on right panel to avoid gap overlap
-      show_column_names         = TRUE,
-      column_names_gp           = grid::gpar(fontsize = 8),
-      column_names_rot          = 60,
-      column_title              = paste0("Up-regulated (", n_up, " genes)"),
-      column_title_gp           = grid::gpar(fontsize = 10, fontface = "bold", col = "#8C510A"),
-      row_title                 = "Perturbations",
-      row_title_gp              = grid::gpar(fontsize = 10),
-      heatmap_legend_param      = list(
-        title     = "z-score",
-        title_gp  = grid::gpar(fontsize = 9),
-        labels_gp = grid::gpar(fontsize = 8)
-      ),
-      use_raster     = TRUE,
-      raster_quality = 2
-    )
+    if (isTRUE(cluster_cols) && any_out) {
+      # Four panels (skipping empty sub-matrices):
+      #   up_in   : up genes in ref     → clustered columns, normal colour
+      #   up_out  : up genes not in ref → original order, muted colour
+      #   down_in : down genes in ref   → clustered columns, normal colour
+      #   down_out: down genes not in ref → original order, muted colour
+      # Row order is established by the first in-ref panel and propagated to all.
 
-    ht_down <- ComplexHeatmap::Heatmap(
-      z_down,
-      name                      = "z-score-down",
-      col                       = col_fun,
-      # use pre-computed row order so rows align with the left panel
-      cluster_rows              = FALSE,
-      row_order                 = row_ord,
-      show_row_dend             = FALSE,
-      cluster_columns           = isTRUE(cluster_cols),
-      clustering_method_columns = cluster_method_cols,
-      show_column_dend          = isTRUE(show_col_dendrogram) && isTRUE(cluster_cols),
-      top_annotation            = top_ann_down,
-      show_row_names            = TRUE,         # labels on the right outer edge
-      row_names_gp              = grid::gpar(fontsize = 8),
-      row_names_max_width       = grid::unit(7, "cm"),
-      show_column_names         = TRUE,
-      column_names_gp           = grid::gpar(fontsize = 8),
-      column_names_rot          = 60,
-      column_title              = paste0("Down-regulated (", n_down, " genes)"),
-      column_title_gp           = grid::gpar(fontsize = 10, fontface = "bold", col = "#01665E"),
-      show_heatmap_legend       = FALSE,
-      use_raster                = TRUE,
-      raster_quality            = 2
-    )
+      panels      <- list()
+      first_panel <- TRUE  # tracks whether the primary row-clustering panel exists yet
 
-    ht_list <- ht_up + ht_down
+      # up_in
+      if (any(up_in_ref)) {
+        g   <- up_genes[up_in_ref]
+        z_s <- z_up[, up_in_ref, drop = FALSE]
+        panels[["up_in"]] <- ComplexHeatmap::Heatmap(
+          z_s,
+          name                      = "z-score",
+          col                       = col_fun,
+          cluster_rows              = if (isTRUE(cluster_rows) && first_panel) row_clust else FALSE,
+          row_order                 = if (!(isTRUE(cluster_rows) && first_panel)) row_ord else NULL,
+          show_row_dend             = isTRUE(show_row_dendrogram) && isTRUE(cluster_rows) && first_panel,
+          cluster_columns           = TRUE,
+          clustering_method_columns = cluster_method_cols,
+          show_column_dend          = isTRUE(show_col_dendrogram),
+          top_annotation            = ComplexHeatmap::HeatmapAnnotation(
+            "Signature log2FC" = as.numeric(logfc_vals_named[g]),
+            col                = list("Signature log2FC" = logfc_col_fun),
+            annotation_legend_param = ann_legend_params,
+            show_annotation_name = first_panel,
+            annotation_name_gp   = grid::gpar(fontsize = 9)
+          ),
+          show_row_names            = FALSE,
+          show_column_names         = TRUE,
+          column_names_gp           = grid::gpar(fontsize = 8),
+          column_names_rot          = 60,
+          column_title              = paste0("Up-in-ref (", sum(up_in_ref), ")"),
+          column_title_gp           = grid::gpar(fontsize = 10, fontface = "bold",
+                                                  col = "#8C510A"),
+          row_title                 = if (first_panel) "Perturbations" else character(0),
+          row_title_gp              = grid::gpar(fontsize = 10),
+          heatmap_legend_param      = list(title     = "z-score",
+                                           title_gp  = grid::gpar(fontsize = 9),
+                                           labels_gp = grid::gpar(fontsize = 8)),
+          show_heatmap_legend       = first_panel,
+          use_raster     = TRUE,
+          raster_quality = 2
+        )
+        first_panel <- FALSE
+      }
+
+      # up_out
+      if (any(!up_in_ref)) {
+        g   <- up_genes[!up_in_ref]
+        z_s <- z_up[, !up_in_ref, drop = FALSE]
+        panels[["up_out"]] <- ComplexHeatmap::Heatmap(
+          z_s,
+          name                = "z-up-out",
+          col                 = muted_zfun,
+          cluster_rows        = FALSE,
+          row_order           = row_ord,
+          show_row_dend       = FALSE,
+          cluster_columns     = FALSE,
+          column_order        = seq_len(ncol(z_s)),
+          show_column_dend    = FALSE,
+          top_annotation      = make_muted_ann(logfc_vals_named[g]),
+          show_row_names      = FALSE,
+          show_column_names   = TRUE,
+          column_names_gp     = grid::gpar(fontsize = 8, col = "#999999"),
+          column_names_rot    = 60,
+          column_title        = "(not in ref)",
+          column_title_gp     = grid::gpar(fontsize = 9, col = "#999999",
+                                           fontface = "italic"),
+          show_heatmap_legend = FALSE,
+          use_raster     = TRUE,
+          raster_quality = 2
+        )
+      }
+
+      # down_in
+      if (any(down_in_ref)) {
+        g   <- down_genes[down_in_ref]
+        z_s <- z_down[, down_in_ref, drop = FALSE]
+        panels[["down_in"]] <- ComplexHeatmap::Heatmap(
+          z_s,
+          name                      = if (first_panel) "z-score" else "z-down-in",
+          col                       = col_fun,
+          cluster_rows              = if (isTRUE(cluster_rows) && first_panel) row_clust else FALSE,
+          row_order                 = if (!(isTRUE(cluster_rows) && first_panel)) row_ord else NULL,
+          show_row_dend             = isTRUE(show_row_dendrogram) && isTRUE(cluster_rows) && first_panel,
+          cluster_columns           = TRUE,
+          clustering_method_columns = cluster_method_cols,
+          show_column_dend          = isTRUE(show_col_dendrogram),
+          top_annotation            = ComplexHeatmap::HeatmapAnnotation(
+            "Signature log2FC" = as.numeric(logfc_vals_named[g]),
+            col                = list("Signature log2FC" = logfc_col_fun),
+            annotation_legend_param = ann_legend_params,
+            show_annotation_name = FALSE,
+            show_legend          = FALSE
+          ),
+          show_row_names            = TRUE,
+          row_names_gp              = grid::gpar(fontsize = 8),
+          row_names_max_width       = grid::unit(7, "cm"),
+          show_column_names         = TRUE,
+          column_names_gp           = grid::gpar(fontsize = 8),
+          column_names_rot          = 60,
+          column_title              = paste0("Down-in-ref (", sum(down_in_ref), ")"),
+          column_title_gp           = grid::gpar(fontsize = 10, fontface = "bold",
+                                                  col = "#01665E"),
+          heatmap_legend_param      = list(title     = "z-score",
+                                           title_gp  = grid::gpar(fontsize = 9),
+                                           labels_gp = grid::gpar(fontsize = 8)),
+          show_heatmap_legend       = first_panel,
+          use_raster     = TRUE,
+          raster_quality = 2
+        )
+        first_panel <- FALSE
+      }
+
+      # down_out
+      if (any(!down_in_ref)) {
+        g   <- down_genes[!down_in_ref]
+        z_s <- z_down[, !down_in_ref, drop = FALSE]
+        panels[["down_out"]] <- ComplexHeatmap::Heatmap(
+          z_s,
+          name                = "z-down-out",
+          col                 = muted_zfun,
+          cluster_rows        = FALSE,
+          row_order           = row_ord,
+          show_row_dend       = FALSE,
+          cluster_columns     = FALSE,
+          column_order        = seq_len(ncol(z_s)),
+          show_column_dend    = FALSE,
+          top_annotation      = make_muted_ann(logfc_vals_named[g]),
+          show_row_names      = !any(down_in_ref),  # show if no down_in panel
+          row_names_gp        = grid::gpar(fontsize = 8),
+          row_names_max_width = grid::unit(7, "cm"),
+          show_column_names   = TRUE,
+          column_names_gp     = grid::gpar(fontsize = 8, col = "#999999"),
+          column_names_rot    = 60,
+          column_title        = "(not in ref)",
+          column_title_gp     = grid::gpar(fontsize = 9, col = "#999999",
+                                           fontface = "italic"),
+          show_heatmap_legend = FALSE,
+          use_raster     = TRUE,
+          raster_quality = 2
+        )
+      }
+
+      ht_list <- Reduce(`+`, panels)
+
+    } else {
+      # cluster_cols = FALSE (or all genes in ref): two-panel split with cell_fun
+      # overlay for non-ref genes within each panel.
+      non_ref_up_idx    <- which(!up_in_ref)
+      non_ref_down_idx  <- which(!down_in_ref)
+      col_up_colors     <- ifelse(up_in_ref,   "black", "#AAAAAA")
+      col_down_colors   <- ifelse(down_in_ref, "black", "#AAAAAA")
+
+      ht_up <- ComplexHeatmap::Heatmap(
+        z_up,
+        name                      = "z-score",
+        col                       = col_fun,
+        cluster_rows              = if (isTRUE(cluster_rows)) row_clust else FALSE,
+        clustering_method_rows    = cluster_method,
+        show_row_dend             = isTRUE(show_row_dendrogram) && isTRUE(cluster_rows),
+        cluster_columns           = isTRUE(cluster_cols),
+        clustering_method_columns = cluster_method_cols,
+        show_column_dend          = isTRUE(show_col_dendrogram) && isTRUE(cluster_cols),
+        top_annotation            = ComplexHeatmap::HeatmapAnnotation(
+          "Signature log2FC" = as.numeric(logfc_vals_named[up_genes]),
+          col                = list("Signature log2FC" = logfc_col_fun),
+          annotation_legend_param = ann_legend_params,
+          show_annotation_name = TRUE,
+          annotation_name_gp   = grid::gpar(fontsize = 9)
+        ),
+        show_row_names            = FALSE,
+        show_column_names         = TRUE,
+        column_names_gp           = grid::gpar(fontsize = 8, col = col_up_colors),
+        column_names_rot          = 60,
+        column_title              = paste0("Up-regulated (", n_up, " genes)"),
+        column_title_gp           = grid::gpar(fontsize = 10, fontface = "bold", col = "#8C510A"),
+        row_title                 = "Perturbations",
+        row_title_gp              = grid::gpar(fontsize = 10),
+        heatmap_legend_param      = list(
+          title     = "z-score",
+          title_gp  = grid::gpar(fontsize = 9),
+          labels_gp = grid::gpar(fontsize = 8)
+        ),
+        cell_fun       = make_cell_fn(non_ref_up_idx),
+        use_raster     = length(non_ref_up_idx) == 0L,
+        raster_quality = 2
+      )
+
+      ht_down <- ComplexHeatmap::Heatmap(
+        z_down,
+        name                      = "z-score-down",
+        col                       = col_fun,
+        # use pre-computed row order so rows align with the left panel
+        cluster_rows              = FALSE,
+        row_order                 = row_ord,
+        show_row_dend             = FALSE,
+        cluster_columns           = isTRUE(cluster_cols),
+        clustering_method_columns = cluster_method_cols,
+        show_column_dend          = isTRUE(show_col_dendrogram) && isTRUE(cluster_cols),
+        top_annotation            = ComplexHeatmap::HeatmapAnnotation(
+          "Signature log2FC" = as.numeric(logfc_vals_named[down_genes]),
+          col                = list("Signature log2FC" = logfc_col_fun),
+          annotation_legend_param = ann_legend_params,
+          show_legend          = FALSE,
+          show_annotation_name = FALSE
+        ),
+        show_row_names            = TRUE,
+        row_names_gp              = grid::gpar(fontsize = 8),
+        row_names_max_width       = grid::unit(7, "cm"),
+        show_column_names         = TRUE,
+        column_names_gp           = grid::gpar(fontsize = 8, col = col_down_colors),
+        column_names_rot          = 60,
+        column_title              = paste0("Down-regulated (", n_down, " genes)"),
+        column_title_gp           = grid::gpar(fontsize = 10, fontface = "bold", col = "#01665E"),
+        show_heatmap_legend       = FALSE,
+        cell_fun       = make_cell_fn(non_ref_down_idx),
+        use_raster     = length(non_ref_down_idx) == 0L,
+        raster_quality = 2
+      )
+
+      ht_list <- ht_up + ht_down
+    }
 
     draw_fn <- function() {
       ComplexHeatmap::draw(
