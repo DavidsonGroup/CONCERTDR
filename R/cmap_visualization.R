@@ -250,6 +250,11 @@ extract_signature_zscores <- function(results_df,
   # When split_direction = FALSE, truncate the whole signature upfront.
   # When split_direction = TRUE, defer truncation to per-direction head() below.
   if (!isTRUE(split_direction) && !is.null(max_genes)) sig <- utils::head(sig, max_genes)
+
+  # Snapshot the full (pre-filter) signature so visualisation can show genes
+  # that were dropped by the data-source intersection as gray placeholder columns.
+  pre_filter_sig <- sig
+
   if (use_reference_df) {
     sig <- sig[sig[[gene_col]] %in% rownames(reference_mat), , drop = FALSE]
     if (nrow(sig) == 0) stop("No signature genes matched the row names of reference_df")
@@ -275,6 +280,23 @@ extract_signature_zscores <- function(results_df,
   ordered_ids <- if (use_reference_df) ordered_genes else unname(gene_map[ordered_genes])
   logfc_map   <- sig[[log2fc_col]]
   names(logfc_map) <- sig[[gene_col]]
+
+  # Build full ordered gene list (pre data-source filter, same sort/truncation logic).
+  {
+    all_down <- pre_filter_sig[pre_filter_sig[[log2fc_col]] < 0, , drop = FALSE]
+    all_down <- all_down[order(all_down[[log2fc_col]], decreasing = FALSE), , drop = FALSE]
+    all_up   <- pre_filter_sig[pre_filter_sig[[log2fc_col]] > 0, , drop = FALSE]
+    all_up   <- all_up[order(all_up[[log2fc_col]], decreasing = TRUE), , drop = FALSE]
+    if (isTRUE(split_direction) && !is.null(max_genes)) {
+      all_down <- utils::head(all_down, max_genes)
+      all_up   <- utils::head(all_up,   max_genes)
+    }
+    all_ordered_genes <- c(as.character(all_down[[gene_col]]),
+                           as.character(all_up[[gene_col]]))
+    all_ordered_genes <- all_ordered_genes[nzchar(all_ordered_genes)]
+    all_logfc_map     <- pre_filter_sig[[log2fc_col]]
+    names(all_logfc_map) <- pre_filter_sig[[gene_col]]
+  }
   
   # select perturbations by score
   tech <- results_df
@@ -375,12 +397,14 @@ extract_signature_zscores <- function(results_df,
   }
   
   list(
-    z_plot        = z_plot,
-    ordered_genes = ordered_genes,
-    logfc_map     = logfc_map,
-    sig_ids       = sig_ids,
-    sig_labels    = sig_labels,
-    sig_scores    = sig_scores
+    z_plot            = z_plot,
+    ordered_genes     = ordered_genes,
+    all_ordered_genes = all_ordered_genes,
+    logfc_map         = logfc_map,
+    all_logfc_map     = all_logfc_map,
+    sig_ids           = sig_ids,
+    sig_labels        = sig_labels,
+    sig_scores        = sig_scores
   )
 }
 
@@ -565,31 +589,34 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
     )
   }
 
-  # ── Reference intersection for visual differentiation ──────────────────────
-  # Genes in ordered_genes that are NOT in reference_df are shown in a muted
-  # silver-gray colour.  When cluster_cols = TRUE, only the intersecting genes
-  # are clustered; the non-intersecting genes are kept in their original
-  # signature order and appended as a separate un-clustered panel.
-  ref_viz_genes <- NULL
-  if (!is.null(reference_df)) {
-    if (is.data.frame(reference_df) && "gene_symbol" %in% names(reference_df)) {
-      ref_viz_genes <- toupper(as.character(reference_df$gene_symbol))
-    } else if (is.data.frame(reference_df) || is.matrix(reference_df)) {
-      ref_viz_genes <- toupper(as.character(rownames(reference_df)))
+  # ── Reconstruct full signature gene set ────────────────────────────────────
+  # extract_signature_zscores stores all_ordered_genes (the full signature gene
+  # list before filtering to the data source) in the precomputed object.  If
+  # some signature genes were dropped because they were absent from reference_df
+  # or the gctx landmark set, pad z_plot with NA columns for them so they are
+  # visible in the heatmap as silver-gray placeholder cells.
+  if (!is.null(precomputed$all_ordered_genes)) {
+    all_g  <- precomputed$all_ordered_genes
+    miss_g <- setdiff(all_g, ordered_genes)
+    if (length(miss_g) > 0) {
+      na_pad    <- matrix(NA_real_, nrow = nrow(z_plot), ncol = length(miss_g),
+                          dimnames = list(rownames(z_plot), miss_g))
+      z_plot    <- cbind(z_plot, na_pad)[, all_g, drop = FALSE]
+      ordered_genes <- all_g
+      if (!is.null(precomputed$all_logfc_map)) logfc_map <- precomputed$all_logfc_map
     }
-    ref_viz_genes <- ref_viz_genes[!is.na(ref_viz_genes) & nzchar(ref_viz_genes)]
-    if (length(ref_viz_genes) == 0) ref_viz_genes <- NULL
   }
 
-  in_ref  <- if (!is.null(ref_viz_genes)) toupper(ordered_genes) %in% ref_viz_genes
-             else rep(TRUE, length(ordered_genes))
+  # in_ref: TRUE = gene has actual z-score data; FALSE = NA placeholder
+  in_ref  <- vapply(seq_len(ncol(z_plot)),
+                    function(j) any(!is.na(z_plot[, j])), logical(1))
   names(in_ref) <- ordered_genes
   any_out <- any(!in_ref)
 
   if (verbose && any_out) {
     message(sum(in_ref), " / ", length(ordered_genes),
-            " signature genes found in reference_df; ",
-            sum(!in_ref), " will be shown in muted colour")
+            " signature genes found in data source; ",
+            sum(!in_ref), " absent genes shown as gray placeholder columns")
   }
 
   # ── ComplexHeatmap ─────────────────────────────────────────────────────────
@@ -608,10 +635,8 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
   if (!is.finite(zlim) || zlim == 0) zlim <- 10
   col_fun <- circlize::colorRamp2(c(-zlim, 0, zlim), c("#3B4CC0", "#F7F7F7", "#B40426"))
 
-  # Muted (silver-gray) colour for genes not present in reference_df
-  muted_col     <- "#CCCCCC"
-  muted_zfun    <- circlize::colorRamp2(c(-zlim, 0, zlim),
-                                        c(muted_col, "#E8E8E8", muted_col))
+  # Muted (silver-gray) colour for genes absent from the data source (NA columns)
+  muted_col <- "#CCCCCC"
 
   # signature log2FC colour strip — BrBG (teal → white → brown).
   # Teal/green = down-regulated (negative log2FC), brown/orange = up-regulated.
@@ -654,23 +679,14 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
     warning("split_direction = TRUE but all genes are in the same direction; drawing single heatmap")
   }
 
-  # ── helper: cell_fun that grays out specific column indices ─────────────────
-  make_cell_fn <- function(non_ref_idx) {
-    if (length(non_ref_idx) == 0L) return(NULL)
-    force(non_ref_idx)
-    function(j, i, x, y, width, height, fill) {
-      if (j %in% non_ref_idx) {
-        grid::grid.rect(x, y, width, height,
-                        gp = grid::gpar(fill = muted_col, col = NA))
-      }
-    }
-  }
-
   # ── helper: muted annotation for out-of-ref genes (no legend, no name) ──────
   make_muted_ann <- function(lfc_vec) {
+    muted_lfc_col <- circlize::colorRamp2(
+      c(-lim, 0, lim), c("#D0D0D0", "#E8E8E8", "#D0D0D0")
+    )
     ComplexHeatmap::HeatmapAnnotation(
       "Signature log2FC" = as.numeric(lfc_vec),
-      col                = list("Signature log2FC" = muted_logfc_col),
+      col                = list("Signature log2FC" = muted_lfc_col),
       show_annotation_name = FALSE,
       show_legend          = FALSE
     )
@@ -723,10 +739,12 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
         raster_quality = 2
       )
 
+      # z_out is all-NA; na_col handles the gray fill natively
       ht_out <- ComplexHeatmap::Heatmap(
         z_out,
         name                   = "z-score (not in ref)",
-        col                    = muted_zfun,
+        col                    = col_fun,
+        na_col                 = muted_col,
         cluster_rows           = FALSE,
         cluster_columns        = FALSE,
         column_order           = seq_len(ncol(z_out)),
@@ -748,16 +766,16 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
       ht <- ht_in + ht_out
 
     } else {
-      # cluster_cols = FALSE (or no out-of-ref genes): single panel in original
-      # gene order.  Non-ref columns are overlaid with a gray rectangle via
-      # cell_fun; their column names are dimmed.
-      non_ref_idx     <- which(!in_ref)
+      # cluster_cols = FALSE (or no absent genes): single panel in original
+      # gene order.  NA columns (absent genes) rendered gray via na_col;
+      # their column names are dimmed.
       col_name_colors <- ifelse(in_ref, "black", "#AAAAAA")
 
       ht <- ComplexHeatmap::Heatmap(
         z_plot,
         name                      = "z-score",
         col                       = col_fun,
+        na_col                    = muted_col,
         cluster_rows              = isTRUE(cluster_rows),
         clustering_method_rows    = cluster_method,
         cluster_columns           = isTRUE(cluster_cols),
@@ -786,8 +804,7 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
           title_gp  = grid::gpar(fontsize = 9),
           labels_gp = grid::gpar(fontsize = 8)
         ),
-        cell_fun       = make_cell_fn(non_ref_idx),
-        use_raster     = length(non_ref_idx) == 0L,
+        use_raster     = TRUE,
         raster_quality = 2
       )
     }
@@ -871,14 +888,15 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
         first_panel <- FALSE
       }
 
-      # up_out
+      # up_out — all-NA columns; na_col handles gray fill
       if (any(!up_in_ref)) {
         g   <- up_genes[!up_in_ref]
         z_s <- z_up[, !up_in_ref, drop = FALSE]
         panels[["up_out"]] <- ComplexHeatmap::Heatmap(
           z_s,
           name                = "z-up-out",
-          col                 = muted_zfun,
+          col                 = col_fun,
+          na_col              = muted_col,
           cluster_rows        = FALSE,
           row_order           = row_ord,
           show_row_dend       = FALSE,
@@ -946,7 +964,8 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
         panels[["down_out"]] <- ComplexHeatmap::Heatmap(
           z_s,
           name                = "z-down-out",
-          col                 = muted_zfun,
+          col                 = col_fun,
+          na_col              = muted_col,
           cluster_rows        = FALSE,
           row_order           = row_ord,
           show_row_dend       = FALSE,
@@ -972,17 +991,16 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
       ht_list <- Reduce(`+`, panels)
 
     } else {
-      # cluster_cols = FALSE (or all genes in ref): two-panel split with cell_fun
-      # overlay for non-ref genes within each panel.
-      non_ref_up_idx    <- which(!up_in_ref)
-      non_ref_down_idx  <- which(!down_in_ref)
-      col_up_colors     <- ifelse(up_in_ref,   "black", "#AAAAAA")
-      col_down_colors   <- ifelse(down_in_ref, "black", "#AAAAAA")
+      # cluster_cols = FALSE (or no absent genes): two-panel split.
+      # NA columns (absent genes) rendered gray via na_col; column names dimmed.
+      col_up_colors   <- ifelse(up_in_ref,   "black", "#AAAAAA")
+      col_down_colors <- ifelse(down_in_ref, "black", "#AAAAAA")
 
       ht_up <- ComplexHeatmap::Heatmap(
         z_up,
         name                      = "z-score",
         col                       = col_fun,
+        na_col                    = muted_col,
         cluster_rows              = if (isTRUE(cluster_rows)) row_clust else FALSE,
         clustering_method_rows    = cluster_method,
         show_row_dend             = isTRUE(show_row_dendrogram) && isTRUE(cluster_rows),
@@ -1009,8 +1027,7 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
           title_gp  = grid::gpar(fontsize = 9),
           labels_gp = grid::gpar(fontsize = 8)
         ),
-        cell_fun       = make_cell_fn(non_ref_up_idx),
-        use_raster     = length(non_ref_up_idx) == 0L,
+        use_raster     = TRUE,
         raster_quality = 2
       )
 
@@ -1018,6 +1035,7 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
         z_down,
         name                      = "z-score-down",
         col                       = col_fun,
+        na_col                    = muted_col,
         # use pre-computed row order so rows align with the left panel
         cluster_rows              = FALSE,
         row_order                 = row_ord,
@@ -1041,8 +1059,7 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
         column_title              = paste0("Down-regulated (", n_down, " genes)"),
         column_title_gp           = grid::gpar(fontsize = 10, fontface = "bold", col = "#01665E"),
         show_heatmap_legend       = FALSE,
-        cell_fun       = make_cell_fn(non_ref_down_idx),
-        use_raster     = length(non_ref_down_idx) == 0L,
+        use_raster     = TRUE,
         raster_quality = 2
       )
 
