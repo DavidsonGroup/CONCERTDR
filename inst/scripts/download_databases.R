@@ -16,12 +16,12 @@ download_cmap_data <- function(dataset = c("metadata", "perturbations", "signatu
 
   file_catalog <- list(
     metadata = c(
-      siginfo_beta = "https://s3.amazonaws.com/data.clue.io/builds/LINCS2020/metadata/siginfo_beta.txt",
-      geneinfo_beta = "https://s3.amazonaws.com/data.clue.io/builds/LINCS2020/metadata/geneinfo_beta.txt",
-      compoundinfo_beta = "https://s3.amazonaws.com/data.clue.io/builds/LINCS2020/metadata/compoundinfo_beta.txt"
+      siginfo_beta = "https://s3.amazonaws.com/macchiato.clue.io/builds/LINCS2020/siginfo_beta.txt",
+      geneinfo_beta = "https://s3.amazonaws.com/macchiato.clue.io/builds/LINCS2020/geneinfo_beta.txt",
+      compoundinfo_beta = "https://s3.amazonaws.com/macchiato.clue.io/builds/LINCS2020/compoundinfo_beta.txt"
     ),
     perturbations = c(
-      level5_trt_cp = "https://s3.amazonaws.com/data.clue.io/builds/LINCS2020/level5/level5_beta_trt_cp_n720216x12328.gctx"
+      level5_trt_cp = "https://s3.amazonaws.com/macchiato.clue.io/builds/LINCS2020/level5/level5_beta_trt_cp_n720216x12328.gctx"
     ),
     signatures = c(
       repurposing_drugs = "https://s3.amazonaws.com/data.clue.io/repurposing/downloads/repurposing_drugs_20200324.txt"

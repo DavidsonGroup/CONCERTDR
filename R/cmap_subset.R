@@ -17,51 +17,35 @@
 #'         columns indicating sample metadata. Metadata is stored as an attribute.
 #'
 #' @examples
-#' is.function(extract_cmap_data_from_siginfo)
-#'
-#' \dontrun{
-#' # Example 1: Use the original siginfo_beta.txt directly
-#' reference_df <- extract_cmap_data_from_siginfo(
-#'   siginfo_file = "path/to/siginfo_beta.txt",
-#'   geneinfo_file = "path/to/geneinfo_beta.txt",
-#'   gctx_file = "path/to/level5_beta_trt_cp_n720216x12328.gctx"
-#' )
-#'
-#' # Example 2: Use a pre-filtered siginfo file
-#' # First filter the siginfo
-#' filtered_sig <- subset_siginfo_beta(
-#'   "siginfo_beta.txt",
-#'   interactive = FALSE,
-#'   filters = list(
-#'     pert_type = "trt_cp",
-#'     pert_itime = c("6 h", "24 h"),
-#'     pert_idose = "10 uM",
-#'     cell_iname = c("A375", "MCF7")
-#'   )
-#' )
-#' write.table(filtered_sig, "filtered_siginfo.txt", sep="\t", row.names=FALSE, quote=FALSE)
-#'
-#' # Then use the filtered siginfo
-#' reference_df <- extract_cmap_data_from_siginfo(
-#'   siginfo_file = "filtered_siginfo.txt",
-#'   geneinfo_file = "path/to/geneinfo_beta.txt",
-#'   gctx_file = "path/to/level5_beta_trt_cp_n720216x12328.gctx",
-#'   filter_quality = FALSE  # Already filtered
-#' )
-#'
-#' # Example 3: Process only first 5000 signatures for testing
-#' reference_df <- extract_cmap_data_from_siginfo(
-#'   siginfo_file = "path/to/siginfo_beta.txt",
-#'   geneinfo_file = "path/to/geneinfo_beta.txt",
-#'   gctx_file = "path/to/level5_beta_trt_cp_n720216x12328.gctx",
-#'   max_signatures = 5000
-#' )
-#'
-#' # Access the metadata
-#' metadata <- attr(reference_df, "metadata")
-#' table(metadata$cell)
-#' table(metadata$time, metadata$dose)
+#' # Build a tiny GCTX file so the example is self-contained and runnable.
+#' gctx_file <- tempfile(fileext = ".gctx")
+#' rhdf5::h5createFile(gctx_file)
+#' for (group in c("0", "0/DATA", "0/DATA/0", "0/META",
+#'                 "0/META/ROW", "0/META/COL")) {
+#'   rhdf5::h5createGroup(gctx_file, group)
 #' }
+#' rhdf5::h5write(matrix(c(1.2, -0.4, 0.7, -1.1), nrow = 2),
+#'                gctx_file, "0/DATA/0/matrix")
+#' rhdf5::h5write(c("1", "2"), gctx_file, "0/META/ROW/id")
+#' rhdf5::h5write(c("SIG_A", "SIG_B"), gctx_file, "0/META/COL/id")
+#'
+#' siginfo <- data.frame(
+#'   sig_id = c("SIG_A", "SIG_B"), is_hiq = 1,
+#'   pert_itime = "24 h", pert_idose = "1 uM", cell_iname = "A375"
+#' )
+#' geneinfo <- data.frame(
+#'   gene_id = c("1", "2"), gene_symbol = c("GENE1", "GENE2"),
+#'   feature_space = "landmark"
+#' )
+#' reference_df <- extract_cmap_data_from_siginfo(
+#'   siginfo_file = siginfo,
+#'   geneinfo_file = geneinfo,
+#'   gctx_file = gctx_file,
+#'   verbose = FALSE
+#' )
+#' reference_df
+#' attr(reference_df, "metadata")
+#' unlink(gctx_file)
 #'
 #' @export
 extract_cmap_data_from_siginfo <- function(siginfo_file = "siginfo_beta.txt",

@@ -18,6 +18,7 @@ extract_signature_zscores(
   score_col = "Score",
   max_genes = 100,
   max_perts = 60,
+  split_direction = FALSE,
   output_zscores = NULL,
   verbose = TRUE
 )
@@ -49,9 +50,23 @@ this object and no GCTX file is required.}
 
 \item{score_col}{Score column (default: \code{"Score"}).}
 
-\item{max_genes}{Maximum number of signature genes (default: 100).}
+\item{max_genes}{Maximum number of signature genes to use (default: 100).
+When \code{split_direction = FALSE} (default) the first \code{max_genes}
+rows of the signature file are taken. When \code{split_direction = TRUE}
+the top \code{max_genes} up-regulated genes (by log2FC) and the top
+\code{max_genes} down-regulated genes (by |log2FC|) are selected
+independently, so the matrix may contain up to \code{2 * max_genes}
+gene columns in total.}
 
 \item{max_perts}{Maximum number of perturbations (default: 60).}
+
+\item{split_direction}{Logical; if \code{TRUE}, apply \code{max_genes}
+separately to the up-regulated (log2FC > 0) and down-regulated
+(log2FC < 0) gene sets rather than to the combined signature.
+The result contains up to \code{2 * max_genes} columns ordered
+down-regulated then up-regulated, matching the layout expected by
+\code{\link{plot_signature_direction_tile_barcode}} with
+\code{split_direction = TRUE}. Default: \code{FALSE}.}
 
 \item{output_zscores}{Optional TSV path to save the matrix. \code{NULL}
 to skip.}
@@ -67,6 +82,8 @@ A named list with elements:
     \item{\code{logfc_map}}{Named numeric vector of signature log2FC values.}
     \item{\code{sig_ids}}{Character vector of selected \code{sig_id}s.}
     \item{\code{sig_labels}}{Character vector of human-readable labels.}
+    \item{\code{sig_scores}}{Numeric vector of \code{score_col} values in
+      the same order as \code{sig_ids} and the rows of \code{z_plot}.}
   }
 }
 \description{

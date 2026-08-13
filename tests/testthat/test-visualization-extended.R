@@ -120,7 +120,7 @@ test_that("extract_signature_zscores errors on invalid signature_file type", {
 
 # ── extract_signature_zscores: return structure ───────────────────────────────
 
-test_that("extract_signature_zscores returns a list with five named elements", {
+test_that("extract_signature_zscores returns its documented named elements", {
   skip_if_no_example()
   z <- extract_signature_zscores(
     results_df     = results_df(),
@@ -129,8 +129,14 @@ test_that("extract_signature_zscores returns a list with five named elements", {
     verbose        = FALSE
   )
   expect_type(z, "list")
-  expect_named(z, c("z_plot", "ordered_genes", "logfc_map", "sig_ids", "sig_labels"),
-               ignore.order = TRUE)
+  expect_named(
+    z,
+    c(
+      "z_plot", "ordered_genes", "all_ordered_genes", "logfc_map",
+      "all_logfc_map", "sig_ids", "sig_labels", "sig_scores"
+    ),
+    ignore.order = TRUE
+  )
 })
 
 test_that("z_plot dimensions match perturbation count and gene count", {

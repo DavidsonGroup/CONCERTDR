@@ -35,7 +35,7 @@ down-regulated genes), CONCERTDR scores every perturbation in CMap and returns
 those whose transcriptional effect most strongly *reverses* the disease pattern.
 
 This vignette demonstrates two complementary use cases using a bundled
-AML-relevant example dataset (200 landmark genes × 500 signatures):
+AML-relevant example dataset (163 genes × 496 signatures):
 
 - **Use case 1 — Find repurposing compounds**: score small-molecule (`trt_cp`)
   perturbations against an AML disease signature to identify candidate drugs.
@@ -56,10 +56,19 @@ The package ships with a real CMap subset in `inst/extdata/`:
 
 | File | Description |
 |------|-------------|
-| `example_signature.txt` | AML disease signature (BCR-ABL activation) |
-| `example_reference_df.csv` | 200 genes × 500 CMap signatures (real z-scores) |
-| `example_siginfo.txt` | Metadata for the 500 signatures |
-| `example_compoundinfo.txt` | Compound annotations (MoA, target, phase) |
+| `example_signature.txt` | Manually curated AML/BCR-ABL-themed demonstration query |
+| `example_reference_df.csv` | 163 genes × 496 CMap signatures (Level 5 z-scores) |
+| `example_siginfo.txt` | Metadata for the 496 signatures |
+| `example_geneinfo.txt` | CMap annotations for the 163 genes |
+| `example_compoundinfo.txt` | CMap compound, mechanism-of-action, and target annotations |
+
+The four CMap-derived files can be regenerated from the LINCS2020 source files
+with `inst/scripts/make_example_data.R`. The script records the source URLs,
+selection manifest, extraction procedure, and rounding used for the compact
+example. `example_signature.txt` is not a CMap measurement: it is a
+deterministic, manually curated query used to exercise both reversal-scoring
+directions. Its values should not be interpreted as estimates from a patient
+cohort or as biological validation of the example rankings.
 
 ```{r load-data}
 sig_file  <- system.file("extdata", "example_signature.txt",
@@ -81,11 +90,10 @@ cat("Reference matrix:", nrow(reference_df), "genes ×",
 
 ## The disease signature
 
-The example signature represents an AML BCR-ABL activation phenotype — genes
-whose expression is elevated (positive log2FC) or suppressed (negative log2FC)
-relative to normal haematopoietic cells. Drugs that *reverse* this pattern
-(i.e., suppress the up-regulated genes and activate the down-regulated ones)
-are candidate therapeutics.
+The example signature is an AML/BCR-ABL-themed set of genes with illustrative
+positive and negative weights. It demonstrates the reversal criterion: a
+perturbation that suppresses the positively weighted genes and activates the
+negatively weighted genes receives a negative connectivity score.
 
 ```{r view-signature}
 signature <- read.delim(sig_file)
@@ -97,7 +105,7 @@ head(signature[order(-abs(signature$log2FC)), ], 10)
 ## The siginfo metadata
 
 The bundled siginfo covers both small-molecule (`trt_cp`) and gene perturbation
-(`trt_oe`, `trt_xpr`) signatures, spanning six AML-relevant cell lines.
+(`trt_oe`, `trt_xpr`) signatures in four well-represented CMap cell lines.
 
 ```{r view-siginfo}
 siginfo <- read.delim(sig_info_file, stringsAsFactors = FALSE)
@@ -404,6 +412,24 @@ cat("Score range — gene perturbations:",
 The two use cases are complementary: compound hits suggest drugs that could be
 repositioned immediately, while gene perturbation hits suggest mechanistic
 targets that could guide future drug discovery or combination strategies.
+
+# Comparison to Similar Packages
+
+CONCERTDR overlaps with
+[`signatureSearch`](https://bioconductor.org/packages/signatureSearch) and
+[`cmapR`](https://bioconductor.org/packages/cmapR), but the packages operate at
+different levels of the workflow:
+
+| Package | Primary scope | When it is a good fit |
+|---------|---------------|-----------------------|
+| **CONCERTDR** | An opinionated end-to-end drug-repurposing workflow: filter CMap contexts, extract reference profiles, run KS/GSEA/XCos/XSum/Zhang matching, annotate hits, and create wet-lab-oriented tables and heatmaps. | When the goal is to move from a disease signature and CMap files to ranked, annotated drug or gene-perturbation candidates with a compact API. |
+| **signatureSearch** | A broader gene-expression-signature search and functional-enrichment framework, with preprocessed CMap/LINCS reference resources supplied through `signatureSearchData` and `ExperimentHub`. | When scalable searches against packaged reference databases, custom databases, or downstream functional enrichment are central to the analysis. |
+| **cmapR** | General infrastructure for parsing, manipulating, and writing CMap formats such as GCT/GCTX matrices and gene-set collections. | When low-level CMap data access and format manipulation are needed without an opinionated repurposing and result-annotation pipeline. |
+
+The packages can also be complementary. For example, `cmapR` can prepare or
+inspect CMap objects before a CONCERTDR analysis, while `signatureSearch` is a
+useful alternative when its database abstractions and functional-enrichment
+tools are preferred.
 
 # Running with Full CMap Data
 

@@ -827,7 +827,7 @@ plot_signature_direction_tile_barcode <- function(results_df = NULL,
 
     # row clustering on the *full* matrix so all panels share the same row order
     if (isTRUE(cluster_rows)) {
-      row_clust <- hclust(dist(z_plot), method = cluster_method)
+      row_clust <- stats::hclust(stats::dist(z_plot), method = cluster_method)
       row_ord   <- row_clust$order
     } else {
       row_ord <- seq_len(nrow(z_plot))

@@ -1,7 +1,7 @@
 Package: CONCERTDR
 Type: Package
 Title: Drug Response Data Analysis Using CMap Database
-Version: 0.99.1
+Version: 0.99.2
 Authors@R: c(
     person("Hengxin", "Pan",
         email = "pan.h@wehi.edu.au",
@@ -31,10 +31,10 @@ Description: Provides a complete pipeline for drug repurposing analysis using
 License: MIT + file LICENSE
 Encoding: UTF-8
 RoxygenNote: 7.3.3
-URL: https://github.com/DavidsonGroup/CONCERT_DR
-BugReports: https://github.com/DavidsonGroup/CONCERT_DR/issues
+URL: https://github.com/DavidsonGroup/CONCERTDR
+BugReports: https://github.com/DavidsonGroup/CONCERTDR/issues
 Depends:
-    R (>= 4.5.0)
+    R (>= 4.6.0)
 Imports:
     data.table,
     rhdf5,

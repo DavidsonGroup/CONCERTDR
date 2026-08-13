@@ -17,7 +17,7 @@ functions that need explicit paths, pass `getOption(...)`.
 
 ```r
 install.packages("remotes")
-remotes::install_github("DavidsonGroup/CONCERT_DR")
+remotes::install_github("DavidsonGroup/CONCERTDR")
 ```
 
 Visualization dependencies:
@@ -32,7 +32,10 @@ install.packages("circlize")
 
 ## Setup
 
-Download the CMap data files from https://clue.io/releases/data-dashboard:
+Download the Expanded CMap LINCS2020 source files from the public Broad
+Institute S3 release. The exact source URLs are recorded in
+`inst/scripts/make_example_data.R`, and `inst/scripts/download_databases.R`
+can download the compound Level 5 matrix and metadata files:
 
 - `level5_beta_all_n1201944x12328.gctx`
 - `siginfo_beta.txt`
@@ -72,7 +75,8 @@ stopifnot(file.exists(getOption("CONCERTDR.geneinfo_file")))
 
 ## Quick-start (bundled test data)
 
-The package ships a small example dataset in `inst/extdata/` (20 genes × 10 signatures),
+The package ships a compact example dataset in `inst/extdata/` (163 genes ×
+496 signatures),
 so you can run the full pipeline without the multi-GB GCTX.
 `system.file()` is used here because the files live *inside the package* — do not
 use it for your own data files on disk.
