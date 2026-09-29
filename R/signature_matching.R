@@ -83,17 +83,39 @@ create_signature_from_gene_lists <- function(up_genes, down_genes,
 #' @param reference_df Dataframe containing reference data (combined across all conditions)
 #' @param output_dir Directory for output files (default: "results")
 #' @param permutations Number of permutations for statistical testing (default: 100)
-#' @param methods Vector of method names to run (default: all)
-#'        Options: "ks", "xcos", "xsum", "gsea0", "gsea1", "gsea2", "zhang"
+#' @param methods Vector of method names to run (default: the seven
+#'        permutation methods)
+#'        Options: "ks", "xcos", "xsum", "gsea0", "gsea1", "gsea2", "zhang",
+#'        "camsum". "camsum" is not run by default; add it explicitly.
 #' @param topN Integer; number of top-ranked genes to use for XCos and XSum methods (default: 4)
 #' @param read_method Character; method to use for reading signature file ("auto", "fread", or "read.table") (default: "auto")
 #' @param save_files Logical; whether to save results to files (default: FALSE)
+#' @param camsum_alternative Alternative hypothesis for the CamSum analytic
+#'   p-value: "two.sided" (default, same convention as the permutation
+#'   methods), "greater" (mimic) or "less" (reversal). Ignored by other methods.
+#' @param camsum_rho_bar Optional mean inter-gene correlation for CamSum,
+#'   used for all profiles. If \code{NULL} (default), CamSum estimates it on
+#'   every profile of the same perturbation type in the GCTX file (options
+#'   \code{CONCERTDR.gctx_file}, \code{CONCERTDR.siginfo_file} and
+#'   \code{CONCERTDR.geneinfo_file} must be set; the type is read from the
+#'   \code{"metadata"} attribute of \code{reference_df} or from siginfo), and
+#'   otherwise on \code{reference_df} with a warning. Ignored by other
+#'   methods.
+#'
+#' @details CamSum uses the analytic null described in
+#'   \code{\link{compute_camsum_rho}}; \code{topN} and \code{permutations} do
+#'   not apply to it. Its p-values were calibrated with \eqn{\bar\rho}
+#'   estimated on whole LINCS \code{trt_oe} / \code{trt_xpr} libraries and are
+#'   anti-conservative on \code{trt_cp}. \code{settings$camsum$rho_source}
+#'   records where \eqn{\bar\rho} came from for each perturbation type.
 #'
 #' @return A structured list containing:
 #'   \item{results}{List containing results for each method}
 #'   \item{summary}{Data frame of top hits across all methods}
 #'   \item{gene_data}{Original signature gene data}
-#'   \item{settings}{List of parameters used for the analysis}
+#'   \item{settings}{List of parameters used for the analysis. When CamSum is
+#'     run, \code{settings$camsum} holds k, kU, kD, alternative, and
+#'     rho_bar, VIF, rho_source and rho_n_profiles per perturbation type.}
 #'   \item{common_genes}{Counts of genes found in reference data}
 #'   Use print() or summary() methods to get a quick overview of results
 #'
@@ -128,7 +150,11 @@ create_signature_from_gene_lists <- function(up_genes, down_genes,
 process_signature_with_df <- function(signature_file, reference_df, output_dir = "results",
                                       permutations = 100, methods = c("ks", "xcos", "xsum", "gsea0",
                                                                       "gsea1", "gsea2", "zhang"),
-                                      topN = 4, read_method = "auto", save_files = FALSE) {
+                                      topN = 4, read_method = "auto", save_files = FALSE,
+                                      camsum_alternative = c("two.sided", "greater", "less"),
+                                      camsum_rho_bar = NULL) {
+
+  camsum_alternative <- match.arg(camsum_alternative)
 
   # Create output directory if it doesn't exist and files will be saved
   if (save_files && !dir.exists(output_dir)) {
@@ -294,6 +320,14 @@ process_signature_with_df <- function(signature_file, reference_df, output_dir =
       message("Running Zhang score...")
       score_zhang(refMatrix = ref, queryUp = common_up, queryDown = common_down,
                   permuteNum = permutations)
+    },
+
+    camsum = function() {
+      message("Running CamSum score (analytic p-value; topN and permutations are not used)...")
+      score_camsum(refMatrix = ref, queryUp = common_up, queryDown = common_down,
+                   alternative = camsum_alternative, rho_bar = camsum_rho_bar,
+                   pert_type = if (is.null(camsum_rho_bar))
+                     .camsum_pert_types(colnames(ref), attr(reference_df, "metadata")))
     }
   )
   
@@ -313,7 +347,14 @@ process_signature_with_df <- function(signature_file, reference_df, output_dir =
   for (method in methods) {
     tryCatch({
       result_df <- all_methods[[method]]()
-      
+
+      # Keep CamSum's query-level quantities before cbind() drops attributes
+      if (method == "camsum") {
+        settings$camsum <- attributes(result_df)[
+          c("k", "kU", "kD", "rho_bar", "VIF", "rho_source", "rho_n_profiles",
+            "alternative")]
+      }
+
       # Add compound names if not already included
       if (!("compound" %in% colnames(result_df))) {
         result_df <- cbind(compound = rownames(result_df), result_df)

@@ -243,6 +243,7 @@ Available methods:
 | `xsum` | Extreme sum |
 | `gsea0` / `gsea1` / `gsea2` | GSEA (weight 0 / 1 / 2) |
 | `zhang` | Zhang et al. |
+| `camsum` | CamSum: correlation-adjusted sum with analytic p-value (opt-in; not in the default set) |
 
 #### 4b. Annotate
 
