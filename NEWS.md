@@ -1,3 +1,31 @@
+# CONCERTDR 0.99.3
+
+## New features
+
+* **New matching method `camsum`** (CamSum). Scores each reference profile as
+  `T = (sum_U z - sum_D z) / (s_i * sqrt(k * VIF))`, where `s_i` is the
+  profile's standard deviation over all genes and
+  `VIF = max(1, 1 + (k - 1) * rho_bar)`; `rho_bar` is the mean inter-gene
+  correlation of the query across the reference library (down genes negated).
+  p-values are analytic (standard normal), so no permutations are needed.
+  Run it with `process_signature_with_df(..., methods = "camsum")`; it is not
+  part of the default method set, so existing calls give the same results.
+  New arguments `camsum_alternative` ("two.sided", "greater", "less") and
+  `camsum_rho_bar`, and the new exported helper `compute_camsum_rho()`.
+* CamSum estimates `rho_bar` on the whole library of each profile's
+  perturbation type, not on the (possibly filtered) reference passed in: when
+  options `CONCERTDR.gctx_file`, `CONCERTDR.siginfo_file` and
+  `CONCERTDR.geneinfo_file` are set, every profile of that type is streamed
+  from the GCTX file (two passes; the value is cached for the session).
+  Profiles of different types get their own `rho_bar`. Without these options
+  `rho_bar` is estimated on the reference with a warning. Where it came from is
+  recorded in `settings$camsum$rho_source`.
+
+## Other changes
+
+* Minimum R version lowered from 4.6.0 back to 4.5.0. No code needs R 4.6;
+  this lets the package be installed from GitHub on R 4.5.
+
 # CONCERTDR 0.99.1
 
 ## Bug fixes and improvements

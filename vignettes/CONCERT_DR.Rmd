@@ -336,6 +336,41 @@ top_ge[, c("compound", "Score", "pValue", "pAdjValue")]
 plot(results_ge, method = "xsum", plot_type = "scores", top_n = 20)
 ```
 
+## CamSum: analytic p-values without permutations
+
+`camsum` sums the reference z-scores of the query genes (up minus down),
+divides by each profile's standard deviation, and corrects for the average
+correlation among the query genes across the library
+(`VIF = max(1, 1 + (k - 1) * rho_bar)`). The p-value comes from the standard
+normal distribution, so it needs no permutations; `topN` and `permutations`
+are ignored. Use `camsum_alternative = "less"` to test for reversal.
+
+```{r camsum-gene-perts}
+results_cs <- process_signature_with_df(
+  signature_file     = sig_file,
+  reference_df       = ge_ref,
+  methods            = "camsum",
+  camsum_alternative = "less",
+  save_files         = FALSE
+)
+results_cs$settings$camsum[c("k", "rho_bar", "VIF", "rho_source")]
+cs_ge <- results_cs$results$camsum
+head(cs_ge[order(cs_ge$Score), c("compound", "Score", "pValue", "pAdjValue")], 10)
+```
+
+CamSum's p-values were calibrated with `rho_bar` estimated on a whole LINCS
+treatment library (`trt_oe` or `trt_xpr`). When the options
+`CONCERTDR.gctx_file`, `CONCERTDR.siginfo_file` and `CONCERTDR.geneinfo_file`
+are set (see *Running with Full CMap Data*) and the GCTX file holds the
+whole library (for example `level5_beta_all_n1201944x12328.gctx`), CamSum
+reads every profile of the same perturbation type from it to estimate `rho_bar`, whatever subset is
+passed as `reference_df`; each perturbation type in the reference gets its own
+value. Without these files, as in this example, `rho_bar` is estimated on the
+reference itself and a warning says so; rankings are the same either way.
+`results_cs$settings$camsum$rho_source` shows which route was used. On
+compound profiles (`trt_cp`) the CamSum score is left-skewed and its p-values
+are too small, so use it for ranking only there.
+
 ## Annotate gene perturbation hits
 
 ```{r annotate-gene-perts}

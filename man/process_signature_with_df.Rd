@@ -12,7 +12,9 @@ process_signature_with_df(
   methods = c("ks", "xcos", "xsum", "gsea0", "gsea1", "gsea2", "zhang"),
   topN = 4,
   read_method = "auto",
-  save_files = FALSE
+  save_files = FALSE,
+  camsum_alternative = c("two.sided", "greater", "less"),
+  camsum_rho_bar = NULL
 )
 }
 \arguments{
@@ -28,26 +30,51 @@ You can create a suitable data frame from gene lists using
 
 \item{permutations}{Number of permutations for statistical testing (default: 100)}
 
-\item{methods}{Vector of method names to run (default: all)
-Options: "ks", "xcos", "xsum", "gsea0", "gsea1", "gsea2", "zhang"}
+\item{methods}{Vector of method names to run (default: the seven
+permutation methods)
+Options: "ks", "xcos", "xsum", "gsea0", "gsea1", "gsea2", "zhang",
+"camsum". "camsum" is not run by default; add it explicitly.}
 
 \item{topN}{Integer; number of top-ranked genes to use for XCos and XSum methods (default: 4)}
 
 \item{read_method}{Character; method to use for reading signature file ("auto", "fread", or "read.table") (default: "auto")}
 
 \item{save_files}{Logical; whether to save results to files (default: FALSE)}
+
+\item{camsum_alternative}{Alternative hypothesis for the CamSum analytic
+p-value: "two.sided" (default, same convention as the permutation
+methods), "greater" (mimic) or "less" (reversal). Ignored by other methods.}
+
+\item{camsum_rho_bar}{Optional mean inter-gene correlation for CamSum,
+used for all profiles. If \code{NULL} (default), CamSum estimates it on
+every profile of the same perturbation type in the GCTX file (options
+\code{CONCERTDR.gctx_file}, \code{CONCERTDR.siginfo_file} and
+\code{CONCERTDR.geneinfo_file} must be set; the type is read from the
+\code{"metadata"} attribute of \code{reference_df} or from siginfo), and
+otherwise on \code{reference_df} with a warning. Ignored by other
+methods.}
 }
 \value{
 A structured list containing:
   \item{results}{List containing results for each method}
   \item{summary}{Data frame of top hits across all methods}
   \item{gene_data}{Original signature gene data}
-  \item{settings}{List of parameters used for the analysis}
+  \item{settings}{List of parameters used for the analysis. When CamSum is
+    run, \code{settings$camsum} holds k, kU, kD, alternative, and
+    rho_bar, VIF, rho_source and rho_n_profiles per perturbation type.}
   \item{common_genes}{Counts of genes found in reference data}
   Use print() or summary() methods to get a quick overview of results
 }
 \description{
 Process drug response signatures against reference data in a dataframe
+}
+\details{
+CamSum uses the analytic null described in
+  \code{\link{compute_camsum_rho}}; \code{topN} and \code{permutations} do
+  not apply to it. Its p-values were calibrated with \eqn{\bar\rho}
+  estimated on whole LINCS \code{trt_oe} / \code{trt_xpr} libraries and are
+  anti-conservative on \code{trt_cp}. \code{settings$camsum$rho_source}
+  records where \eqn{\bar\rho} came from for each perturbation type.
 }
 \examples{
 sig_file <- system.file("extdata", "example_signature.txt",
