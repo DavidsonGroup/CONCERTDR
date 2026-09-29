@@ -2,7 +2,7 @@
 % Please edit documentation in R/scoring_methods.R
 \name{.apply_score}
 \alias{.apply_score}
-\title{Apply a scoring function across reference lists, optionally in parallel}
+\title{Apply a scoring function across reference lists}
 \usage{
 .apply_score(refList, scoreFun, ...)
 }
@@ -17,6 +17,6 @@
 Named or unnamed numeric vector of scores, one per element of \code{refList}.
 }
 \description{
-Apply a scoring function across reference lists, optionally in parallel
+Apply a scoring function across reference lists
 }
 \keyword{internal}

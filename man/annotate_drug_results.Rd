@@ -8,10 +8,7 @@ annotate_drug_results(
   results_df,
   sig_info_file,
   comp_info_file,
-  drug_info_file = NULL,
   output_file = NULL,
-  fuzzy_threshold = 90,
-  perfect_match_only = FALSE,
   score_col = "Score",
   padj_col = "pAdjValue",
   p_col = "pValue",
@@ -19,7 +16,8 @@ annotate_drug_results(
   keep_dose_in_drug_view = FALSE,
   output_dir = NULL,
   write_outputs = FALSE,
-  verbose = TRUE
+  verbose = TRUE,
+  direction = c("reversal", "mimic")
 )
 }
 \arguments{
@@ -29,14 +27,8 @@ annotate_drug_results(
 
 \item{comp_info_file}{Path to compound information file or data frame}
 
-\item{drug_info_file}{Deprecated. Kept for backward compatibility; not used.}
-
 \item{output_file}{Deprecated single-file output path; when provided,
 \code{tech_view_all} is also written as CSV for compatibility.}
-
-\item{fuzzy_threshold}{Deprecated. Not used.}
-
-\item{perfect_match_only}{Deprecated. Not used.}
 
 \item{score_col}{Score column in \code{results_df} (default: \code{"Score"})}
 
@@ -55,6 +47,11 @@ files are not written unless \code{write_outputs = TRUE}.}
 \item{write_outputs}{Logical; write four TSV outputs (default: \code{FALSE})}
 
 \item{verbose}{Logical; whether to print progress messages (default: TRUE)}
+
+\item{direction}{\code{"reversal"} (default) puts the lowest scores first
+in the wetlab views and picks each drug's lowest-scoring context as its
+best; \code{"mimic"} uses the highest. It only orders and picks; no row
+is dropped by the sign of its score.}
 }
 \value{
 A named list with:
@@ -69,26 +66,29 @@ Integrate signature matching results with annotations from
 \code{siginfo_beta.txt} and \code{compoundinfo_beta.txt}. It produces
 three analysis-ready tables and one drug context summary table.
 }
+\details{
+When compoundinfo contains multiple rows for one \code{pert_id},
+  all distinct nonblank target and MOA values are retained, separated by
+  \code{"; "}. This does not duplicate signature results or inflate context
+  counts. Targets and MOAs are independent lists, not positional pairs.
+}
 \examples{
 ex_results <- data.frame(
   compound = "CVD001_HEPG2_6H:BRD-K03652504-001-01-9:10.0497",
   Score = -0.72,
   pValue = 0.002,
-  pAdjValue = 0.02,
-  stringsAsFactors = FALSE
+  pAdjValue = 0.02
 )
 ex_siginfo <- data.frame(
   sig_id = ex_results$compound,
   pert_type = "trt_cp",
   pert_id = "BRD-K03652504-001-01-9",
-  pert_iname = "imatinib",
-  stringsAsFactors = FALSE
+  pert_iname = "imatinib"
 )
 ex_compinfo <- data.frame(
   pert_id = "BRD-K03652504-001-01-9",
   pert_name = "imatinib",
-  cmap_name = "imatinib",
-  stringsAsFactors = FALSE
+  cmap_name = "imatinib"
 )
 views <- annotate_drug_results(
   results_df = ex_results,

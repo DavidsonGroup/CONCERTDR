@@ -17,6 +17,8 @@
 \item{permuteScoreMat}{Matrix of permuted scores (nSamples x nPerms).}
 
 \item{pAdjMethod}{Adjustment method passed to \code{stats::p.adjust}.}
+
+\item{sample_names}{Optional sample names used as row names of the result.}
 }
 \value{
 Data frame with Score, pValue, pAdjValue columns.

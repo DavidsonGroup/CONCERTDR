@@ -59,8 +59,7 @@ create_signature_from_gene_lists <- function(up_genes, down_genes,
   sig_df <- data.frame(
     Gene   = c(up_genes, down_genes),
     log2FC = c(rep(up_value, length(up_genes)),
-               rep(down_value, length(down_genes))),
-    stringsAsFactors = FALSE
+               rep(down_value, length(down_genes)))
   )
 
   # Sort by absolute log2FC descending
@@ -70,7 +69,7 @@ create_signature_from_gene_lists <- function(up_genes, down_genes,
   message(sprintf("Created signature with %d up-regulated and %d down-regulated genes",
                   length(up_genes), length(down_genes)))
 
-  return(sig_df)
+  sig_df
 }
 
 #' Process drug response signatures against reference data in a dataframe
@@ -87,7 +86,8 @@ create_signature_from_gene_lists <- function(up_genes, down_genes,
 #'        permutation methods)
 #'        Options: "ks", "xcos", "xsum", "gsea0", "gsea1", "gsea2", "zhang",
 #'        "camsum". "camsum" is not run by default; add it explicitly.
-#' @param topN Integer; number of top-ranked genes to use for XCos and XSum methods (default: 4)
+#' @param topN Integer; number of top and bottom genes retained from each
+#'   reference profile for XCos and XSum (default: 4). Does not truncate the query.
 #' @param read_method Character; method to use for reading signature file ("auto", "fread", or "read.table") (default: "auto")
 #' @param save_files Logical; whether to save results to files (default: FALSE)
 #' @param camsum_alternative Alternative hypothesis for the CamSum analytic
@@ -102,6 +102,12 @@ create_signature_from_gene_lists <- function(up_genes, down_genes,
 #'   otherwise on \code{reference_df} with a warning. Ignored by other
 #'   methods.
 #'
+#' @param direction Ordering of hits: \code{"reversal"} (default) ranks the
+#'   lowest scores first, \code{"mimic"} the highest first. It only orders
+#'   \code{rank}, the summary and \code{plot()}; no result is dropped by the
+#'   sign of its score, and p-values and \code{camsum_alternative} are
+#'   unaffected. Cross-method \code{global_rank} compares each hit's rank
+#'   percentile among all profiles of its method, not raw score magnitudes.
 #' @details CamSum uses the analytic null described in
 #'   \code{\link{compute_camsum_rho}}; \code{topN} and \code{permutations} do
 #'   not apply to it. Its p-values were calibrated with \eqn{\bar\rho}
@@ -148,262 +154,110 @@ create_signature_from_gene_lists <- function(up_genes, down_genes,
 #'
 #' @export
 process_signature_with_df <- function(signature_file, reference_df, output_dir = "results",
-                                      permutations = 100, methods = c("ks", "xcos", "xsum", "gsea0",
-                                                                      "gsea1", "gsea2", "zhang"),
+                                      permutations = 100,
+                                      methods = c("ks", "xcos", "xsum", "gsea0",
+                                                  "gsea1", "gsea2", "zhang"),
                                       topN = 4, read_method = "auto", save_files = FALSE,
                                       camsum_alternative = c("two.sided", "greater", "less"),
-                                      camsum_rho_bar = NULL) {
-
+                                      camsum_rho_bar = NULL,
+                                      direction = c("reversal", "mimic")) {
+  direction <- match.arg(direction)
   camsum_alternative <- match.arg(camsum_alternative)
-
-  # Create output directory if it doesn't exist and files will be saved
-  if (save_files && !dir.exists(output_dir)) {
-    dir.create(output_dir, recursive = TRUE)
-  }
-  
-  # Record start time for performance tracking
+  read_method <- match.arg(read_method, c("auto", "fread", "read.table"))
   start_time <- Sys.time()
-  
-  # Handle signature input: data.frame or file path
-  if (is.data.frame(signature_file)) {
-    gene_data <- signature_file
-    signature_label <- "(data.frame)"
-    message("Using signature data from data.frame")
-  } else if (is.character(signature_file) && length(signature_file) == 1L) {
-    signature_label <- signature_file
-    message("Reading signature data from ", signature_file)
-    if (!file.exists(signature_file)) {
-      stop("Signature file not found: ", signature_file)
-    }
-    tryCatch({
-      if (read_method == "auto") {
-        # Auto-detect best method
-        if (requireNamespace("data.table", quietly = TRUE)) {
-          gene_data <- data.table::fread(signature_file, header = TRUE,
-                                         stringsAsFactors = FALSE, data.table = FALSE)
-        } else {
-          gene_data <- utils::read.delim(signature_file, header = TRUE, sep = "\t",
-                                         stringsAsFactors = FALSE, comment.char = "")
-        }
-      } else if (read_method == "fread" && requireNamespace("data.table", quietly = TRUE)) {
-        gene_data <- data.table::fread(signature_file, header = TRUE,
-                                       stringsAsFactors = FALSE, data.table = FALSE)
-      } else {
-        # Default to read.table
-        gene_data <- utils::read.delim(signature_file, header = TRUE, sep = "\t",
-                                       stringsAsFactors = FALSE, comment.char = "")
-      }
-    }, error = function(e) {
-      stop("Error reading signature file: ", e$message)
-    })
-  } else {
-    stop("signature_file must be either a file path (character) or a data.frame with 'Gene' and 'log2FC' columns.")
-  }
-  
-  # Check if required columns exist
-  if (!all(c("Gene", "log2FC") %in% colnames(gene_data))) {
-    stop("Signature file must contain 'Gene' and 'log2FC' columns")
-  }
-  
-  # Separate up and down regulated genes based on log2FC values
-  Up <- gene_data$Gene[gene_data$log2FC > 0]
+  if (save_files && !dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
+
+  signature <- .load_signature(signature_file, read_method)
+  gene_data <- signature$data
+  Up   <- gene_data$Gene[gene_data$log2FC > 0]
   Down <- gene_data$Gene[gene_data$log2FC < 0]
-  
   if (length(Up) == 0 || length(Down) == 0) {
     stop("Signature file must contain both up-regulated (log2FC > 0) and down-regulated (log2FC < 0) genes")
   }
-  
-  # Define query for XCos (signed values with gene names)
-  query_genes <- gene_data$Gene
-  query_values <- suppressWarnings(as.numeric(gene_data$log2FC))
-  query <- stats::setNames(query_values, query_genes)
-  
-  # Prepare reference data for processing
+  # Signed query values with gene names, for XCos
+  query <- stats::setNames(.as_numeric(gene_data$log2FC), gene_data$Gene)
+
   message("Preparing reference data for analysis...")
-  
-  # Check if reference_df has gene_symbol column
-  if (!("gene_symbol" %in% colnames(reference_df))) {
-    stop("Reference dataframe must contain a 'gene_symbol' column")
-  }
-  
-  # Create reference matrix with genes as row names
-  ref_data <- reference_df
-  rownames(ref_data) <- ref_data$gene_symbol
-  ref_data$gene_symbol <- NULL
-
-  # Convert to matrix format
-  ref <- as.matrix(ref_data)
-  
-  # Verify genes exist in reference
-  common_up <- intersect(Up, rownames(ref))
+  ref <- .reference_matrix(reference_df)
+  common_up   <- intersect(Up, rownames(ref))
   common_down <- intersect(Down, rownames(ref))
-  
-  # Report overlap based on the topN genes actually used by scoring methods.
-  # Sort each direction by effect size, truncate to topN, then intersect with ref.
-  up_sorted   <- gene_data[gene_data$log2FC > 0, , drop = FALSE]
-  up_sorted   <- up_sorted[order(up_sorted$log2FC, decreasing = TRUE), , drop = FALSE]
-  down_sorted <- gene_data[gene_data$log2FC < 0, , drop = FALSE]
-  down_sorted <- down_sorted[order(down_sorted$log2FC, decreasing = FALSE), , drop = FALSE]
 
-  up_topN   <- up_sorted$Gene[seq_len(min(topN, nrow(up_sorted)))]
-  down_topN <- down_sorted$Gene[seq_len(min(topN, nrow(down_sorted)))]
-
-  n_up_found   <- length(intersect(up_topN,   rownames(ref)))
-  n_down_found <- length(intersect(down_topN, rownames(ref)))
-  pct_up   <- round(n_up_found   / length(up_topN)   * 100, 1)
-  pct_down <- round(n_down_found / length(down_topN) * 100, 1)
-
+  # Coverage describes the complete query; topN limits reference extremes only.
+  pct_up <- 100 * length(common_up) / length(unique(Up))
+  pct_down <- 100 * length(common_down) / length(unique(Down))
   message(sprintf(
-    "Found %d/%d up-regulated genes (%g%%) and %d/%d down-regulated genes (%g%%) in reference (top %d per direction)",
-    n_up_found,   length(up_topN),   pct_up,
-    n_down_found, length(down_topN), pct_down,
-    topN
-  ))
-  
+    "Found %d/%d up-regulated genes (%g%%) and %d/%d down-regulated genes (%g%%) in reference",
+    length(common_up), length(unique(Up)), pct_up,
+    length(common_down), length(unique(Down)), pct_down))
   if (length(common_up) == 0 || length(common_down) == 0) {
     stop("No matching genes found in reference data. Please check your signature genes.")
   }
-  
-  # Initialize results list
-  all_results <- list()
-  
-  # Store metadata about the analysis
+
   settings <- list(
-    signature_file = signature_label,
+    signature_file = signature$label,
     permutations = permutations,
     methods = methods,
+    direction = direction,
     topN = topN,
     time_started = start_time,
     reference_dimensions = dim(ref),
-    reference_genes = length(rownames(ref))
+    reference_genes = nrow(ref)
   )
-  
-  # Available methods
-  all_methods <- list(
-    ks = function() {
-      message("Running KS score...")
-      score_ks(refMatrix = ref, queryUp = common_up, queryDown = common_down,
-               permuteNum = permutations)
-    },
-    
-    xcos = function() {
-      message(sprintf("Running XCos score with topN = %d...", topN))
-      score_xcos(refMatrix = ref, query = query[names(query) %in% rownames(ref)],
-                 topN = topN, permuteNum = permutations)
-    },
-    
-    xsum = function() {
-      message(sprintf("Running XSum score with topN = %d...", topN))
-      score_xsum(refMatrix = ref, queryUp = common_up, queryDown = common_down,
-                 topN = topN, permuteNum = permutations)
-    },
-    
-    gsea0 = function() {
-      message("Running GSEA weight 0 score...")
-      score_gsea0(refMatrix = ref, queryUp = common_up, queryDown = common_down,
-                  permuteNum = permutations)
-    },
-    
-    gsea1 = function() {
-      message("Running GSEA weight 1 score...")
-      score_gsea1(refMatrix = ref, queryUp = common_up, queryDown = common_down,
-                  permuteNum = permutations)
-    },
-    
-    gsea2 = function() {
-      message("Running GSEA weight 2 score...")
-      score_gsea2(refMatrix = ref, queryUp = common_up, queryDown = common_down,
-                  permuteNum = permutations)
-    },
-    
-    zhang = function() {
-      message("Running Zhang score...")
-      score_zhang(refMatrix = ref, queryUp = common_up, queryDown = common_down,
-                  permuteNum = permutations)
-    },
 
-    camsum = function() {
-      message("Running CamSum score (analytic p-value; topN and permutations are not used)...")
-      score_camsum(refMatrix = ref, queryUp = common_up, queryDown = common_down,
-                   alternative = camsum_alternative, rho_bar = camsum_rho_bar,
-                   pert_type = if (is.null(camsum_rho_bar))
-                     .camsum_pert_types(colnames(ref), attr(reference_df, "metadata")))
-    }
-  )
-  
-  # Validate selected methods
-  invalid_methods <- setdiff(methods, names(all_methods))
+  invalid_methods <- setdiff(methods, .score_methods)
   if (length(invalid_methods) > 0) {
     message("Invalid methods specified: ", paste(invalid_methods, collapse = ", "),
             ". Will be ignored.")
-    methods <- intersect(methods, names(all_methods))
+    methods <- intersect(methods, .score_methods)
   }
-  
   if (length(methods) == 0) {
-    stop("No valid methods to run. Valid methods are: ", paste(names(all_methods), collapse = ", "))
+    stop("No valid methods to run. Valid methods are: ", paste(.score_methods, collapse = ", "))
   }
-  
-  # Run selected scoring methods
-  for (method in methods) {
-    tryCatch({
-      result_df <- all_methods[[method]]()
 
+  all_results <- list()
+  for (method in methods) {
+    all_results[[method]] <- tryCatch({
+      camsum_pert_type <- if (method == "camsum" && is.null(camsum_rho_bar)) {
+        .camsum_pert_types(colnames(ref), attr(reference_df, "metadata"))
+      }
+      result_df <- .run_score_method(
+        method, ref, query, common_up, common_down, permutations, topN,
+        camsum = list(alternative = camsum_alternative, rho_bar = camsum_rho_bar,
+                      pert_type = camsum_pert_type))
       # Keep CamSum's query-level quantities before cbind() drops attributes
       if (method == "camsum") {
         settings$camsum <- attributes(result_df)[
           c("k", "kU", "kD", "rho_bar", "VIF", "rho_source", "rho_n_profiles",
             "alternative")]
       }
-
-      # Add compound names if not already included
-      if (!("compound" %in% colnames(result_df))) {
-        result_df <- cbind(compound = rownames(result_df), result_df)
-      }
-      
-      # Add rank column for easier interpretation
-      result_df$rank <- rank(-result_df$Score)
-      
-      # Store in results list
-      all_results[[method]] <- result_df
-      
-      # Save individual results if requested
+      result_df <- cbind(compound = rownames(result_df), result_df)
+      result_df$rank <- rank(if (direction == "reversal") result_df$Score else -result_df$Score,
+                             na.last = "keep")
       if (save_files) {
         output_file <- file.path(output_dir, paste0("sig_match_", method, "_results.csv"))
         utils::write.csv(result_df, file = output_file, row.names = FALSE)
         message("Saved ", method, " results to ", output_file)
       }
+      result_df
     }, error = function(e) {
       warning("Error running ", method, " method: ", e$message)
-      all_results[[method]] <- data.frame(
-        compound = character(0),
-        Score = numeric(0),
-        pValue = numeric(0),
-        error = character(0)
-      )
-      all_results[[method]]$error <- e$message
+      data.frame(compound = NA_character_, Score = NA_real_, pValue = NA_real_,
+                 error = e$message)
     })
   }
-  
-  # Create summary of top hits across all methods
-  summary_df <- create_summary_from_results(all_results)
-  
-  # Save summary file if requested
+
+  summary_df <- create_summary_from_results(all_results, direction = direction)
   if (save_files) {
     summary_file <- file.path(output_dir, "summary_results.csv")
     utils::write.csv(summary_df, file = summary_file, row.names = FALSE)
     message("Saved summary report to ", summary_file)
   }
-  
-  # Record end time
+
   end_time <- Sys.time()
-  time_taken <- difftime(end_time, start_time, units = "mins")
-  
-  # Update settings with completion info
   settings$time_completed <- end_time
-  settings$time_taken_mins <- as.numeric(time_taken)
-  
-  # Create a structured result object
-  result_object <- structure(
+  settings$time_taken_mins <- as.numeric(difftime(end_time, start_time, units = "mins"))
+
+  structure(
     list(
       results = all_results,
       summary = summary_df,
@@ -416,72 +270,134 @@ process_signature_with_df <- function(signature_file, reference_df, output_dir =
     ),
     class = "cmap_signature_result"
   )
-  
-  # Return the complete result object
-  return(result_object)
+}
+
+# Names of the available scoring methods
+.score_methods <- c("ks", "xcos", "xsum", "gsea0", "gsea1", "gsea2", "zhang", "camsum")
+
+#' Read the signature from a data frame or a file
+#' @param signature_file Path to a signature file, or a data frame with
+#'   \code{Gene} and \code{log2FC} columns.
+#' @param read_method One of \code{"auto"}, \code{"fread"} or
+#'   \code{"read.table"}.
+#' @return List with the signature \code{data} and a \code{label} describing
+#'   its origin.
+#' @keywords internal
+.load_signature <- function(signature_file, read_method) {
+  if (is.data.frame(signature_file)) {
+    message("Using signature data from data.frame")
+    gene_data <- signature_file
+    label <- "(data.frame)"
+  } else if (is.character(signature_file) && length(signature_file) == 1L) {
+    message("Reading signature data from ", signature_file)
+    if (!file.exists(signature_file)) {
+      stop("Signature file not found: ", signature_file)
+    }
+    gene_data <- tryCatch(
+      if (read_method == "read.table") {
+        utils::read.delim(signature_file, header = TRUE, sep = "\t", comment.char = "")
+      } else {
+        data.table::fread(signature_file, header = TRUE, data.table = FALSE)
+      },
+      error = function(e) stop("Error reading signature file: ", e$message)
+    )
+    label <- signature_file
+  } else {
+    stop("signature_file must be either a file path (character) or a data.frame with 'Gene' and 'log2FC' columns.")
+  }
+  if (!all(c("Gene", "log2FC") %in% colnames(gene_data))) {
+    stop("Signature file must contain 'Gene' and 'log2FC' columns")
+  }
+  list(data = gene_data, label = label)
+}
+
+#' Convert a reference data frame to a numeric matrix
+#' @param reference_df Data frame with a \code{gene_symbol} column and one
+#'   column per profile.
+#' @return Numeric matrix with gene symbols as row names.
+#' @keywords internal
+.reference_matrix <- function(reference_df) {
+  if (!("gene_symbol" %in% colnames(reference_df))) {
+    stop("Reference dataframe must contain a 'gene_symbol' column")
+  }
+  ref <- reference_df
+  rownames(ref) <- ref$gene_symbol
+  ref$gene_symbol <- NULL
+  as.matrix(ref)
+}
+
+#' Run one scoring method
+#' @param method One of \code{.score_methods}.
+#' @param ref Reference matrix (genes x profiles).
+#' @param query Named numeric vector of signature log2FC values (XCos).
+#' @param common_up,common_down Signature genes present in \code{ref}.
+#' @param permutations Number of permutations.
+#' @param topN Number of top/bottom genes for XCos and XSum.
+#' @param camsum List with CamSum's \code{alternative}, \code{rho_bar} and
+#'   \code{pert_type} arguments.
+#' @return Data frame with Score, pValue, pAdjValue per profile.
+#' @keywords internal
+.run_score_method <- function(method, ref, query, common_up, common_down,
+                              permutations, topN, camsum) {
+  labels <- c(ks = "KS", xcos = "XCos", xsum = "XSum", gsea0 = "GSEA weight 0",
+              gsea1 = "GSEA weight 1", gsea2 = "GSEA weight 2", zhang = "Zhang")
+  if (method == "camsum") {
+    message("Running CamSum score (analytic p-value; topN and permutations are not used)...")
+    return(score_camsum(ref, common_up, common_down,
+                        alternative = camsum$alternative, rho_bar = camsum$rho_bar,
+                        pert_type = camsum$pert_type))
+  }
+  message("Running ", labels[[method]], " score",
+          if (method %in% c("xcos", "xsum")) sprintf(" with topN = %d", topN), "...")
+  switch(method,
+    ks    = score_ks(ref, common_up, common_down, permuteNum = permutations),
+    xcos  = score_xcos(ref, query[names(query) %in% rownames(ref)], topN = topN,
+                       permuteNum = permutations),
+    xsum  = score_xsum(ref, common_up, common_down, topN = topN,
+                       permuteNum = permutations),
+    gsea0 = score_gsea0(ref, common_up, common_down, permuteNum = permutations),
+    gsea1 = score_gsea1(ref, common_up, common_down, permuteNum = permutations),
+    gsea2 = score_gsea2(ref, common_up, common_down, permuteNum = permutations),
+    zhang = score_zhang(ref, common_up, common_down, permuteNum = permutations)
+  )
 }
 
 #' Create a summary from signature matching results
 #'
+#' @param direction \code{"reversal"} (lowest score first) or \code{"mimic"}.
 #' @param results_list List of results from different methods
 #' @param top_n Number of top hits to include (default: 20)
 #'
 #' @return Data frame with summary of top hits across methods
 #'
 #' @keywords internal
-create_summary_from_results <- function(results_list, top_n = 20) {
-  # Initialize summary dataframe
-  summary_df <- data.frame(
-    compound = character(),
-    method = character(),
-    Score = numeric(),
-    pValue = numeric(),
-    rank = integer(),
-    stringsAsFactors = FALSE
-  )
-  
-  # Extract top hits from each method
-  for (method_name in names(results_list)) {
+create_summary_from_results <- function(results_list, top_n = 20,
+                                        direction = c("reversal", "mimic")) {
+  direction <- match.arg(direction)
+  top_hits <- lapply(names(results_list), function(method_name) {
     result <- results_list[[method_name]]
-    
-    # Skip if error or empty
-    if (nrow(result) == 0 || "error" %in% colnames(result)) {
-      next
-    }
-    
-    # Make sure rank column exists
-    if (!"rank" %in% colnames(result)) {
-      result$rank <- rank(-result$Score)
-    }
-    
-    # Get top hits
-    top_hits <- result[result$rank <= top_n, ]
-    
-    if (nrow(top_hits) > 0) {
-      top_hits$method <- method_name
-      summary_df <- rbind(
-        summary_df,
-        top_hits[, c("compound", "method", "Score", "pValue", "rank")]
-      )
-    }
+    if (nrow(result) == 0 || "error" %in% colnames(result)) return(NULL)
+    result <- .rank_by_direction(result, direction = direction)
+    if (!nrow(result)) return(NULL)
+    # Percentile among all ranked profiles of the method, so a method is not
+    # rewarded for having few profiles on one side of zero.
+    result$rank <- rank(if (direction == "reversal") result$Score else -result$Score)
+    result$rank_percentile <- (result$rank - 1) / max(1, nrow(result) - 1)
+    hits <- utils::head(result, top_n)
+    hits$method <- method_name
+    hits[, c("compound", "method", "Score", "pValue", "rank", "rank_percentile")]
+  })
+  summary_df <- do.call(rbind, top_hits)
+  if (is.null(summary_df)) {
+    return(data.frame(compound = character(), method = character(),
+                      Score = numeric(), pValue = numeric(), rank = integer(),
+                      rank_percentile = numeric(), global_rank = numeric()))
   }
-  
-  # Sort by method and rank
+
   summary_df <- summary_df[order(summary_df$method, summary_df$rank), ]
-  
-  # Add global rank across methods
-  if (nrow(summary_df) > 0) {
-    # Calculate a weighted score considering both Score and p-value
-    summary_df$weighted_score <- summary_df$Score * (1 - summary_df$pValue)
-    
-    # Rank across all methods
-    summary_df$global_rank <- rank(-summary_df$weighted_score)
-    
-    # Remove the temporary weighted score column
-    summary_df$weighted_score <- NULL
-  }
-  
-  return(summary_df)
+  # Compare relative rank within each method, whose raw score scales differ.
+  summary_df$global_rank <- rank(summary_df$rank_percentile)
+  summary_df
 }
 
 #' Print method for cmap_signature_result objects
@@ -537,10 +453,10 @@ print.cmap_signature_result <- function(x, ...) {
   # Print gene coverage
   cat("\nGene coverage:\n")
   cat(sprintf("  Up-regulated: %d/%d genes (%.1f%%)\n",
-              x$common_genes$up$count, length(x$gene_data$Gene[x$gene_data$log2FC > 0]),
+              x$common_genes$up$count, length(unique(x$gene_data$Gene[x$gene_data$log2FC > 0])),
               x$common_genes$up$percent))
   cat(sprintf("  Down-regulated: %d/%d genes (%.1f%%)\n",
-              x$common_genes$down$count, length(x$gene_data$Gene[x$gene_data$log2FC < 0]),
+              x$common_genes$down$count, length(unique(x$gene_data$Gene[x$gene_data$log2FC < 0])),
               x$common_genes$down$percent))
   
   # Print top compounds from summary (if available)
@@ -688,7 +604,8 @@ plot.cmap_signature_result <- function(x, method = NULL, plot_type = "scores", t
   # Different plot types
   if (plot_type == "scores") {
     # Bar plot of top scores
-    top_df <- result_df[order(-result_df$Score), ][seq_len(min(top_n, nrow(result_df))), ]
+    direction <- if (is.null(x$settings$direction)) "reversal" else x$settings$direction
+    top_df <- utils::head(.rank_by_direction(result_df, direction = direction), top_n)
     
     p <- ggplot2::ggplot(top_df, ggplot2::aes(x = stats::reorder(compound, Score), y = Score)) +
       ggplot2::geom_bar(stat = "identity", fill = "steelblue") +
@@ -724,26 +641,5 @@ plot.cmap_signature_result <- function(x, method = NULL, plot_type = "scores", t
     stop("Invalid plot_type: '", plot_type, "'. Must be one of: 'scores', 'volcano', 'heatmap'")
   }
   
-  return(p)
+  p
 }
-#' Complete workflow from configuration to signature matching
-#'
-#' @param config_file Path to configuration file with selected parameters
-#' @param signature_file Path to signature gene list with log2FC values,
-#'   or a data frame with \code{Gene} and \code{log2FC} columns.
-#' @param geneinfo_file Path to the gene info file
-#' @param siginfo_file Path to the signature info file
-#' @param gctx_file Path to the GCTX file
-#' @param output_dir Directory for output files (default: "results")
-#' @param methods Vector of method names to run (default: all)
-#'        Options: "ks", "xcos", "xsum", "gsea0", "gsea1", "gsea2", "zhang"
-#' @param topN Integer; number of top-ranked genes to use for XCos and XSum methods (default: 4)
-#' @param permutations Number of permutations for statistical testing (default: 100)
-#' @param save_files Logical; whether to write per-method and summary result
-#'   files to \code{output_dir} (default: FALSE)
-#' @param keep_all_genes Logical; whether to keep all genes when extracting CMap data (default: TRUE)
-#' @param read_method Character; method to use for reading signature file ("auto", "fread", or "read.table") (default: "auto")
-#' @param verbose Logical; whether to print progress messages (default: TRUE)
-#'
-#' @return List containing results from all methods
-#'

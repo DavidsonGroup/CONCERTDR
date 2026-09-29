@@ -188,29 +188,13 @@ compute_camsum_rho <- function(refMatrix, queryUp, queryDown, chunk = 2000L) {
                       showProgress = FALSE))
 }
 
-#' Row and column ids of a GCTX file, read once per session
-#' @param gctx_file GCTX file path.
-#' @return List with \code{row} and \code{col} character vectors.
-#' @keywords internal
-.camsum_gctx_ids <- function(gctx_file) {
-  .camsum_cached(paste("ids", .camsum_file_key(gctx_file)), list(
-    row = trimws(as.character(fast_read_meta(
-      gctx_file, c("/0/META/ROW/id", "/META/ROW/id")))),
-    col = trimws(as.character(fast_read_meta(
-      gctx_file, c("/0/META/COL/id", "/META/COL/id"))))))
-}
-
 #' Read whole columns of the GCTX data matrix
 #' @param gctx_file GCTX file path.
 #' @param cols Integer column indices.
 #' @return Numeric matrix, all genes x \code{cols}.
 #' @keywords internal
 .camsum_gctx_columns <- function(gctx_file, cols) {
-  X <- tryCatch(
-    rhdf5::h5read(gctx_file, "/0/DATA/0/matrix", index = list(NULL, cols)),
-    error = function(e) {
-      rhdf5::h5read(gctx_file, "/DATA/0/matrix", index = list(NULL, cols))
-    })
+  X <- .gctx_read_matrix(gctx_file, list(NULL, cols))
   storage.mode(X) <- "double"
   X
 }
@@ -271,16 +255,19 @@ compute_camsum_rho <- function(refMatrix, queryUp, queryDown, chunk = 2000L) {
     return(NULL)
   }
 
-  ids <- .camsum_gctx_ids(gctx_file)
-  gi <- .camsum_read_meta_file(geneinfo_file, c("gene_id", "gene_symbol"))
-  row_symbols <- gi$gene_symbol[match(ids$row, as.character(gi$gene_id))]
-  rows <- match(genes, row_symbols)
+  ids <- .gctx_ids(gctx_file)
+  gi <- .camsum_cached(paste("unique_genes", .camsum_file_key(geneinfo_file)), {
+    .dedup_geneinfo(.read_cmap_table(geneinfo_file, "geneinfo_file",
+                                    select = c("gene_id", "gene_symbol", "feature_space")))
+  })
+  gene_ids <- as.character(gi$gene_id[match(genes, gi$gene_symbol)])
+  rows <- match(gene_ids, ids$row)
   si <- .camsum_read_meta_file(siginfo_file, c("sig_id", "pert_type"))
   cols <- match(si$sig_id[si$pert_type == pert_type], ids$col)
   if (anyNA(rows) || length(cols) < 2L || anyNA(cols)) return(NULL)
   cols <- sort(cols)
 
-  key <- paste("rho", .camsum_file_key(gctx_file), pert_type,
+  key <- paste("rho", .camsum_file_key(gctx_file), .camsum_file_key(geneinfo_file), pert_type,
                paste(sort(genes), collapse = "\t"),
                paste(sort(genes[U]), collapse = "\t"),
                paste(sort(genes[D]), collapse = "\t"), sep = "\n")
@@ -305,6 +292,32 @@ compute_camsum_rho <- function(refMatrix, queryUp, queryDown, chunk = 2000L) {
 
 
 # ── Scoring ──────────────────────────────────────────────────────────────────
+
+#' Warn that rho_bar came from the supplied reference, not the full library
+#' @param local Perturbation types whose rho_bar was estimated on the
+#'   supplied reference.
+#' @param n_rho Number of profiles behind each rho_bar, named by type.
+#' @return NULL, invisibly.
+#' @keywords internal
+.camsum_warn_local_rho <- function(local, n_rho) {
+  small <- local[n_rho[local] < 500]
+  warning("CamSum rho_bar was estimated on the supplied reference (",
+          paste(sprintf("%s: %d profiles", local, as.integer(n_rho[local])),
+                collapse = ", "),
+          ") instead of the full library, because the perturbation type ",
+          "was unknown, options CONCERTDR.gctx_file / siginfo_file / ",
+          "geneinfo_file were not set, a reference gene was missing from ",
+          "the GCTX file, or the GCTX file does not hold every profile of ",
+          "that type. Rankings are not affected, but p-values can ",
+          "depart from nominal levels when the reference is a filtered ",
+          "subset (e.g. one cell line) and the query has many genes; pass ",
+          "camsum_rho_bar to override.",
+          if (length(small)) {
+            paste0(" Fewer than 500 profiles were available for: ",
+                   paste(small, collapse = ", "))
+          },
+          call. = FALSE)
+}
 
 #' CamSum connectivity score
 #'
@@ -404,25 +417,7 @@ score_camsum <- function(refMatrix, queryUp, queryDown,
   vif   <- ifelse(is.finite(rho), pmax(1, 1 + (k - 1) * rho), 1)
 
   local <- names(src)[src == "refMatrix"]
-  if (length(local)) {
-    small <- local[n_rho[local] < 500]
-    warning("CamSum rho_bar was estimated on the supplied reference (",
-            paste(sprintf("%s: %d profiles", local, as.integer(n_rho[local])),
-                  collapse = ", "),
-            ") instead of the full library, because the perturbation type ",
-            "was unknown, options CONCERTDR.gctx_file / siginfo_file / ",
-            "geneinfo_file were not set, a reference gene was missing from ",
-            "the GCTX file, or the GCTX file does not hold every profile of ",
-            "that type. Rankings are not affected, but p-values can ",
-            "depart from nominal levels when the reference is a filtered ",
-            "subset (e.g. one cell line) and the query has many genes; pass ",
-            "camsum_rho_bar to override.",
-            if (length(small)) {
-              paste0(" Fewer than 500 profiles were available for: ",
-                     paste(small, collapse = ", "))
-            },
-            call. = FALSE)
-  }
+  if (length(local)) .camsum_warn_local_rho(local, n_rho)
 
   raw <- colSums(refMatrix[U, , drop = FALSE]) -
          colSums(refMatrix[D, , drop = FALSE])

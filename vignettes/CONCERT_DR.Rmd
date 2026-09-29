@@ -164,6 +164,15 @@ print(results_cp)
 
 ## Inspect top compound hits
 
+Hits are ranked with `direction = "reversal"` by default (lowest scores
+first). To rank mimics first, pass `direction = "mimic"` to scoring, annotation
+and z-score extraction (or direct barcode plotting). `direction` only orders
+results and never removes a result because of its sign. `plot()` uses the
+scoring object's saved direction; precomputed barcode plots use the extraction's
+ordering. Cross-method `global_rank` compares rank percentiles within each
+method rather than raw score magnitudes. This is an ordering of hits, not a
+combined p-value.
+
 A negative score means the drug *reverses* the disease signature — the
 standard criterion for a candidate repurposing hit. BCR-ABL inhibitors such as
 imatinib and dasatinib should rank near the top against this AML signature.

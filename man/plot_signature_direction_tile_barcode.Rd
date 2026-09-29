@@ -33,7 +33,8 @@ plot_signature_direction_tile_barcode(
   width = NULL,
   height = NULL,
   dpi = 150,
-  verbose = TRUE
+  verbose = TRUE,
+  direction = c("reversal", "mimic")
 )
 }
 \arguments{
@@ -127,6 +128,12 @@ and perturbations (~0.22 in/gene width, ~0.28 in/perturbation height).}
 \item{dpi}{PNG resolution.}
 
 \item{verbose}{Logical; print progress messages.}
+
+\item{direction}{Order in which perturbations are picked by score:
+\code{"reversal"} (default) lowest first, \code{"mimic"} highest first.
+No perturbation is excluded by the sign of its score. Precomputed
+matrices are plotted as supplied; choose the direction when extracting
+them.}
 }
 \value{
 Invisibly returns a list containing the plotted matrix,

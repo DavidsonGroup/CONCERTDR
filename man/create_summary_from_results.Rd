@@ -4,12 +4,18 @@
 \alias{create_summary_from_results}
 \title{Create a summary from signature matching results}
 \usage{
-create_summary_from_results(results_list, top_n = 20)
+create_summary_from_results(
+  results_list,
+  top_n = 20,
+  direction = c("reversal", "mimic")
+)
 }
 \arguments{
 \item{results_list}{List of results from different methods}
 
 \item{top_n}{Number of top hits to include (default: 20)}
+
+\item{direction}{\code{"reversal"} (lowest score first) or \code{"mimic"}.}
 }
 \value{
 Data frame with summary of top hits across methods
