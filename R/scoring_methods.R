@@ -188,11 +188,21 @@ NULL
 #' @param queryDown Character vector of down-regulated gene symbols.
 #' @param permuteNum Number of permutations (default: 10000).
 #' @param pAdjMethod P-value adjustment method (default: "BH").
+#' @param vectorized Whether to use the vectorised engine (default: TRUE),
+#'   which scores blocks of samples at once. It is skipped automatically for
+#'   reference matrices with missing values or duplicated gene names. Scores
+#'   are the same as the row-by-row code; p-values of KS and GSEA weight 0 use
+#'   one permutation null shared by all samples (same distribution, different
+#'   random numbers), and the other methods reproduce the row-by-row p-values
+#'   for the same seed. Use \code{FALSE} for the row-by-row code.
 #' @return Data frame with Score, pValue, pAdjValue per sample.
 #' @keywords internal
 score_ks <- function(refMatrix, queryUp, queryDown,
-                     permuteNum = 10000, pAdjMethod = "BH") {
+                     permuteNum = 10000, pAdjMethod = "BH", vectorized = TRUE) {
   refMatrix <- .validate_ref_matrix(refMatrix)
+  if (.use_fast(refMatrix, vectorized)) {
+    return(.fast_ks(refMatrix, queryUp, queryDown, permuteNum, pAdjMethod))
+  }
 
   ks_enrichment <- function(refList, query) {
     lenRef <- length(refList)
@@ -231,8 +241,13 @@ score_ks <- function(refMatrix, queryUp, queryDown,
 #' @return Data frame with Score, pValue, pAdjValue per sample.
 #' @keywords internal
 .score_gsea <- function(refMatrix, queryUp, queryDown, permuteNum, pAdjMethod,
-                        weight) {
+                        weight, vectorized = TRUE) {
   refMatrix <- .validate_ref_matrix(refMatrix)
+  if (.use_fast(refMatrix, vectorized)) {
+    fast <- if (weight == 0) .fast_gsea0 else
+      function(...) .fast_gseaW(..., weight = weight)
+    return(fast(refMatrix, queryUp, queryDown, permuteNum, pAdjMethod))
+  }
 
   gsea_enrichment <- function(refList, query) {
     tagIndicator   <- sign(match(names(refList), query, nomatch = 0))
@@ -265,8 +280,9 @@ score_ks <- function(refMatrix, queryUp, queryDown,
 #' @return Data frame with Score, pValue, pAdjValue per sample.
 #' @keywords internal
 score_gsea0 <- function(refMatrix, queryUp, queryDown,
-                        permuteNum = 10000, pAdjMethod = "BH") {
-  .score_gsea(refMatrix, queryUp, queryDown, permuteNum, pAdjMethod, weight = 0)
+                        permuteNum = 10000, pAdjMethod = "BH", vectorized = TRUE) {
+  .score_gsea(refMatrix, queryUp, queryDown, permuteNum, pAdjMethod, weight = 0,
+              vectorized = vectorized)
 }
 
 #' GSEA weight-1 connectivity score
@@ -274,8 +290,9 @@ score_gsea0 <- function(refMatrix, queryUp, queryDown,
 #' @return Data frame with Score, pValue, pAdjValue per sample.
 #' @keywords internal
 score_gsea1 <- function(refMatrix, queryUp, queryDown,
-                        permuteNum = 10000, pAdjMethod = "BH") {
-  .score_gsea(refMatrix, queryUp, queryDown, permuteNum, pAdjMethod, weight = 1)
+                        permuteNum = 10000, pAdjMethod = "BH", vectorized = TRUE) {
+  .score_gsea(refMatrix, queryUp, queryDown, permuteNum, pAdjMethod, weight = 1,
+              vectorized = vectorized)
 }
 
 #' GSEA weight-2 connectivity score
@@ -283,8 +300,9 @@ score_gsea1 <- function(refMatrix, queryUp, queryDown,
 #' @return Data frame with Score, pValue, pAdjValue per sample.
 #' @keywords internal
 score_gsea2 <- function(refMatrix, queryUp, queryDown,
-                        permuteNum = 10000, pAdjMethod = "BH") {
-  .score_gsea(refMatrix, queryUp, queryDown, permuteNum, pAdjMethod, weight = 2)
+                        permuteNum = 10000, pAdjMethod = "BH", vectorized = TRUE) {
+  .score_gsea(refMatrix, queryUp, queryDown, permuteNum, pAdjMethod, weight = 2,
+              vectorized = vectorized)
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -301,11 +319,15 @@ score_gsea2 <- function(refMatrix, queryUp, queryDown,
 #' @return Data frame with Score, pValue, pAdjValue per sample.
 #' @keywords internal
 score_xcos <- function(refMatrix, query, topN = 500,
-                       permuteNum = 10000, pAdjMethod = "BH") {
+                       permuteNum = 10000, pAdjMethod = "BH", vectorized = TRUE) {
   refMatrix <- .validate_ref_matrix(refMatrix)
   if (!is.numeric(query)) stop("query must be a numeric vector")
   if (is.null(names(query))) stop("query must have names")
   .check_topN(topN, refMatrix)
+  if (.use_fast(refMatrix, vectorized) && all(names(query) %in% rownames(refMatrix)) &&
+      !anyDuplicated(names(query)) && length(query) > 0) {
+    return(.fast_xcos(refMatrix, query, topN, permuteNum, pAdjMethod))
+  }
 
   xcos_single <- function(refList, query) {
     common <- intersect(names(refList), names(query))
@@ -339,9 +361,12 @@ score_xcos <- function(refMatrix, query, topN = 500,
 #' @return Data frame with Score, pValue, pAdjValue per sample.
 #' @keywords internal
 score_xsum <- function(refMatrix, queryUp, queryDown, topN = 500,
-                       permuteNum = 10000, pAdjMethod = "BH") {
+                       permuteNum = 10000, pAdjMethod = "BH", vectorized = TRUE) {
   refMatrix <- .validate_ref_matrix(refMatrix)
   .check_topN(topN, refMatrix)
+  if (.use_fast(refMatrix, vectorized)) {
+    return(.fast_xsum(refMatrix, queryUp, queryDown, topN, permuteNum, pAdjMethod))
+  }
 
   xsum_single <- function(refList, queryUp, queryDown) {
     scoreUp   <- sum(refList[match(queryUp,   names(refList))], na.rm = TRUE)
@@ -363,11 +388,16 @@ score_xsum <- function(refMatrix, queryUp, queryDown, topN = 500,
 #' @return Data frame with Score, pValue, pAdjValue per sample.
 #' @keywords internal
 score_zhang <- function(refMatrix, queryUp, queryDown,
-                        permuteNum = 10000, pAdjMethod = "BH") {
+                        permuteNum = 10000, pAdjMethod = "BH", vectorized = TRUE) {
   refMatrix <- .validate_ref_matrix(refMatrix)
   queryUp   <- as.character(queryUp)
   queryDown <- as.character(queryDown)
   nQuery    <- length(queryUp) + length(queryDown)
+  if (.use_fast(refMatrix, vectorized) && nQuery > 0 && nQuery <= nrow(refMatrix) &&
+      all(c(queryUp, queryDown) %in% rownames(refMatrix)) &&
+      !anyDuplicated(c(queryUp, queryDown))) {
+    return(.fast_zhang(refMatrix, queryUp, queryDown, permuteNum, pAdjMethod))
+  }
 
   zhang_single <- function(refRank, queryRank) {
     common <- intersect(names(refRank), names(queryRank))

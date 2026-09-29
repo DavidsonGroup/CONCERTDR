@@ -4,7 +4,14 @@
 \alias{score_ks}
 \title{Kolmogorov-Smirnov connectivity score}
 \usage{
-score_ks(refMatrix, queryUp, queryDown, permuteNum = 10000, pAdjMethod = "BH")
+score_ks(
+  refMatrix,
+  queryUp,
+  queryDown,
+  permuteNum = 10000,
+  pAdjMethod = "BH",
+  vectorized = TRUE
+)
 }
 \arguments{
 \item{refMatrix}{Numeric matrix with genes as rows and samples as columns.}
@@ -16,6 +23,14 @@ score_ks(refMatrix, queryUp, queryDown, permuteNum = 10000, pAdjMethod = "BH")
 \item{permuteNum}{Number of permutations (default: 10000).}
 
 \item{pAdjMethod}{P-value adjustment method (default: "BH").}
+
+\item{vectorized}{Whether to use the vectorised engine (default: TRUE),
+which scores blocks of samples at once. It is skipped automatically for
+reference matrices with missing values or duplicated gene names. Scores
+are the same as the row-by-row code; p-values of KS and GSEA weight 0 use
+one permutation null shared by all samples (same distribution, different
+random numbers), and the other methods reproduce the row-by-row p-values
+for the same seed. Use \code{FALSE} for the row-by-row code.}
 }
 \value{
 Data frame with Score, pValue, pAdjValue per sample.

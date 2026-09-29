@@ -102,6 +102,11 @@ create_signature_from_gene_lists <- function(up_genes, down_genes,
 #'   otherwise on \code{reference_df} with a warning. Ignored by other
 #'   methods.
 #'
+#' @param vectorized Whether the seven permutation methods use the vectorised
+#'   engine (default: \code{TRUE}); see \code{score_ks}. It only changes how
+#'   the scores are computed, not the formulas, and is skipped automatically
+#'   when \code{reference_df} has missing values or duplicated genes. Use
+#'   \code{FALSE} to reproduce results of earlier versions exactly.
 #' @param direction Ordering of hits: \code{"reversal"} (default) ranks the
 #'   lowest scores first, \code{"mimic"} the highest first. It only orders
 #'   \code{rank}, the summary and \code{plot()}; no result is dropped by the
@@ -160,7 +165,8 @@ process_signature_with_df <- function(signature_file, reference_df, output_dir =
                                       topN = 4, read_method = "auto", save_files = FALSE,
                                       camsum_alternative = c("two.sided", "greater", "less"),
                                       camsum_rho_bar = NULL,
-                                      direction = c("reversal", "mimic")) {
+                                      direction = c("reversal", "mimic"),
+                                      vectorized = TRUE) {
   direction <- match.arg(direction)
   camsum_alternative <- match.arg(camsum_alternative)
   read_method <- match.arg(read_method, c("auto", "fread", "read.table"))
@@ -222,6 +228,7 @@ process_signature_with_df <- function(signature_file, reference_df, output_dir =
       }
       result_df <- .run_score_method(
         method, ref, query, common_up, common_down, permutations, topN,
+        vectorized = vectorized,
         camsum = list(alternative = camsum_alternative, rho_bar = camsum_rho_bar,
                       pert_type = camsum_pert_type))
       # Keep CamSum's query-level quantities before cbind() drops attributes
@@ -333,12 +340,13 @@ process_signature_with_df <- function(signature_file, reference_df, output_dir =
 #' @param common_up,common_down Signature genes present in \code{ref}.
 #' @param permutations Number of permutations.
 #' @param topN Number of top/bottom genes for XCos and XSum.
+#' @param vectorized Whether to use the vectorised engine.
 #' @param camsum List with CamSum's \code{alternative}, \code{rho_bar} and
 #'   \code{pert_type} arguments.
 #' @return Data frame with Score, pValue, pAdjValue per profile.
 #' @keywords internal
 .run_score_method <- function(method, ref, query, common_up, common_down,
-                              permutations, topN, camsum) {
+                              permutations, topN, camsum, vectorized = TRUE) {
   labels <- c(ks = "KS", xcos = "XCos", xsum = "XSum", gsea0 = "GSEA weight 0",
               gsea1 = "GSEA weight 1", gsea2 = "GSEA weight 2", zhang = "Zhang")
   if (method == "camsum") {
@@ -350,15 +358,20 @@ process_signature_with_df <- function(signature_file, reference_df, output_dir =
   message("Running ", labels[[method]], " score",
           if (method %in% c("xcos", "xsum")) sprintf(" with topN = %d", topN), "...")
   switch(method,
-    ks    = score_ks(ref, common_up, common_down, permuteNum = permutations),
+    ks    = score_ks(ref, common_up, common_down, permuteNum = permutations,
+                     vectorized = vectorized),
     xcos  = score_xcos(ref, query[names(query) %in% rownames(ref)], topN = topN,
-                       permuteNum = permutations),
+                       permuteNum = permutations, vectorized = vectorized),
     xsum  = score_xsum(ref, common_up, common_down, topN = topN,
-                       permuteNum = permutations),
-    gsea0 = score_gsea0(ref, common_up, common_down, permuteNum = permutations),
-    gsea1 = score_gsea1(ref, common_up, common_down, permuteNum = permutations),
-    gsea2 = score_gsea2(ref, common_up, common_down, permuteNum = permutations),
-    zhang = score_zhang(ref, common_up, common_down, permuteNum = permutations)
+                       permuteNum = permutations, vectorized = vectorized),
+    gsea0 = score_gsea0(ref, common_up, common_down, permuteNum = permutations,
+                        vectorized = vectorized),
+    gsea1 = score_gsea1(ref, common_up, common_down, permuteNum = permutations,
+                        vectorized = vectorized),
+    gsea2 = score_gsea2(ref, common_up, common_down, permuteNum = permutations,
+                        vectorized = vectorized),
+    zhang = score_zhang(ref, common_up, common_down, permuteNum = permutations,
+                        vectorized = vectorized)
   )
 }
 
