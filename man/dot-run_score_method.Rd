@@ -12,7 +12,8 @@
   common_down,
   permutations,
   topN,
-  camsum
+  camsum,
+  vectorized = TRUE
 )
 }
 \arguments{
@@ -30,6 +31,8 @@
 
 \item{camsum}{List with CamSum's \code{alternative}, \code{rho_bar} and
 \code{pert_type} arguments.}
+
+\item{vectorized}{Whether to use the vectorised engine.}
 }
 \value{
 Data frame with Score, pValue, pAdjValue per profile.

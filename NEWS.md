@@ -1,5 +1,31 @@
 # CONCERTDR 0.99.4
 
+## Performance
+
+* The seven permutation methods (`ks`, `xcos`, `xsum`, `gsea0`, `gsea1`,
+  `gsea2`, `zhang`) now score blocks of profiles at once with `matrixStats`
+  instead of one profile at a time, controlled by the new `vectorized`
+  argument (default `TRUE`) of `process_signature_with_df()` and the
+  `score_*()` functions. Formulas are unchanged. On a 978-gene and a
+  12328-gene reference with 100 permutations the seven methods together ran
+  22 and 35 times faster, with the largest gains for KS, GSEA and Zhang.
+* Scores equal the row-by-row values. For `xcos`, `xsum`, `gsea1`, `gsea2` and
+  `zhang`, p-values equal the row-by-row values for the same seed (up to one
+  permutation where a permuted score equals the observed one up to rounding),
+  because the permuted gene sets are drawn in the same order.
+* `ks` and `gsea0` scores depend on a gene set only through its ranks, so the
+  permutation null is the same for every profile and is now computed once and
+  shared. The p-value distribution is the same, but the random numbers differ,
+  so p-values change for a fixed seed. P-values are still `b / B`.
+* `gsea0` now resolves a running sum whose maximum exactly equals its absolute
+  minimum (about 0.3% of random gene sets) deterministically, in favour of the
+  minimum. The row-by-row code decided this tie by floating-point rounding.
+* Reference matrices with missing values or duplicated gene names use the
+  row-by-row code automatically; `vectorized = FALSE` selects it explicitly.
+  The block size can be set with `options(CONCERTDR.chunk_size = )`
+  (default 2000 profiles).
+* New import: `matrixStats`.
+
 ## Breaking changes
 
 * New `direction` argument (`"reversal"` by default, or `"mimic"`) in

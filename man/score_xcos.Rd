@@ -4,7 +4,14 @@
 \alias{score_xcos}
 \title{Extreme cosine similarity score}
 \usage{
-score_xcos(refMatrix, query, topN = 500, permuteNum = 10000, pAdjMethod = "BH")
+score_xcos(
+  refMatrix,
+  query,
+  topN = 500,
+  permuteNum = 10000,
+  pAdjMethod = "BH",
+  vectorized = TRUE
+)
 }
 \arguments{
 \item{refMatrix}{Numeric matrix with genes as rows and samples as columns.}

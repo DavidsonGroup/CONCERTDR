@@ -15,7 +15,8 @@ process_signature_with_df(
   save_files = FALSE,
   camsum_alternative = c("two.sided", "greater", "less"),
   camsum_rho_bar = NULL,
-  direction = c("reversal", "mimic")
+  direction = c("reversal", "mimic"),
+  vectorized = TRUE
 )
 }
 \arguments{
@@ -62,6 +63,12 @@ lowest scores first, \code{"mimic"} the highest first. It only orders
 sign of its score, and p-values and \code{camsum_alternative} are
 unaffected. Cross-method \code{global_rank} compares each hit's rank
 percentile among all profiles of its method, not raw score magnitudes.}
+
+\item{vectorized}{Whether the seven permutation methods use the vectorised
+engine (default: \code{TRUE}); see \code{score_ks}. It only changes how
+the scores are computed, not the formulas, and is skipped automatically
+when \code{reference_df} has missing values or duplicated genes. Use
+\code{FALSE} to reproduce results of earlier versions exactly.}
 }
 \value{
 A structured list containing:
