@@ -8,10 +8,16 @@
 #' @param geneinfo_file Path to the gene info file
 #' @param gctx_file Path to the GCTX file
 #' @param max_signatures Integer; maximum number of signatures to process (default: NULL for all)
-#' @param filter_quality Logical; whether to filter for pert_type="trt_cp" and is_hiq=1 (default: TRUE)
-#' @param keep_all_genes Logical; whether to keep all genes (TRUE) or only common genes (FALSE) (default: TRUE)
+#' @param filter_quality Logical; whether to keep only high-quality signatures
+#'   (\code{is_hiq == 1}) (default: TRUE)
 #' @param verbose Logical; whether to print progress messages (default: TRUE)
 #' @param landmark Logical; whether to restrict to landmark genes only (default: TRUE)
+#' @details Duplicate gene symbols are resolved by preferring landmark,
+#'   then best inferred, then inferred features. Other feature spaces rank
+#'   last and ties retain the first input row. A warning lists discarded and
+#'   retained gene IDs. Gene symbols are not renamed or averaged. GCTX data
+#'   are read in sorted index order and restored to the requested gene and
+#'   signature order explicitly.
 #'
 #' @return A data frame with expression data for all signatures, with annotation
 #'         columns indicating sample metadata. Metadata is stored as an attribute.
@@ -53,186 +59,122 @@ extract_cmap_data_from_siginfo <- function(siginfo_file = "siginfo_beta.txt",
                                            gctx_file = "level5_beta_trt_cp_n720216x12328.gctx",
                                            max_signatures = NULL,
                                            filter_quality = TRUE,
-                                           keep_all_genes = TRUE,
                                            verbose = TRUE,
-                                           landmark=TRUE) {
-  
-  # Handle geneinfo input
-  if (is.character(geneinfo_file)) {
-    if (!file.exists(geneinfo_file)) {
-      stop("Gene info file not found: ", geneinfo_file)
-    }
-    if (verbose) message("Reading gene info file...")
-    if (requireNamespace("data.table", quietly = TRUE)) {
-      geneinfo_df <- data.table::fread(geneinfo_file, header = TRUE,
-                                       stringsAsFactors = FALSE, data.table = FALSE)
-    } else {
-      geneinfo_df <- utils::read.table(geneinfo_file, sep = "\t", header = TRUE,
-                                       stringsAsFactors = FALSE, quote = "",
-                                       comment.char = "", fill = TRUE)
-    }
-  } else if (is.data.frame(geneinfo_file)) {
-    geneinfo_df <- geneinfo_file
-  } else {
-    stop("geneinfo_file must be either a file path (character) or a data.frame.")
+                                           landmark = TRUE) {
+  say <- function(...) if (verbose) message(...)
+
+  say("Reading gene info file...")
+  genes <- get_rid(.read_cmap_table(geneinfo_file, "geneinfo_file"), landmark)
+  say("Found ", length(genes$rid), if (landmark) " landmark", " genes")
+
+  say("Reading signature info file...")
+  sig_info <- .read_cmap_table(siginfo_file, "siginfo_file")
+  say("Loaded siginfo with ", nrow(sig_info), " signatures")
+  sig_info <- .filter_siginfo(sig_info, filter_quality, max_signatures, verbose)
+
+  say("\nProcessing ", nrow(sig_info), " signatures from siginfo file")
+  if (verbose) {
+    .message_column_summary(sig_info, "pert_itime", "Time points")
+    .message_column_summary(sig_info, "pert_idose", "Doses", max_shown = 5L)
+    .message_column_summary(sig_info, "cell_iname", "Cell lines", max_shown = 10L)
   }
-  
-  # Parse gene info
-  result <- get_rid(geneinfo_df,landmark)
-  rid <- result$rid
-  genenames <- result$genenames
-  if (verbose) message("Found ", length(rid), " landmark genes")
-  
-  # Handle siginfo input
-  if (is.character(siginfo_file)) {
-    if (!file.exists(siginfo_file)) {
-      stop("Signature info file not found: ", siginfo_file)
-    }
-    if (verbose) message("Reading signature info file...")
-    if (requireNamespace("data.table", quietly = TRUE)) {
-      sig_info <- data.table::fread(siginfo_file, header = TRUE,
-                                    stringsAsFactors = FALSE, data.table = FALSE)
-    } else {
-      sig_info <- utils::read.table(siginfo_file, sep = "\t", header = TRUE,
-                                    stringsAsFactors = FALSE, quote = "",
-                                    comment.char = "", fill = TRUE)
-    }
-  } else if (is.data.frame(siginfo_file)) {
-    sig_info <- siginfo_file
-  } else {
-    stop("siginfo_file must be either a file path (character) or a data.frame.")
-  }
-  
-  if (verbose) message("Loaded siginfo with ", nrow(sig_info), " signatures")
-  
-  # Apply quality filters if requested
+  say("\n", strrep("=", 60), "\n",
+      "NOTE: Extracting data from GCTX file...\n",
+      "This step may take a long time depending on the number of\n",
+      "signatures (", nrow(sig_info), ") and the size of the GCTX file.\n",
+      "Please be patient and do not interrupt the process.\n",
+      strrep("=", 60), "\n")
+
+  mat <- tryCatch(
+    fast_parse_gctx(fname = gctx_file, cid = sig_info$sig_id, rid = genes$rid),
+    error = function(e) stop("Error reading GCTX file: ", e$message)
+  )
+  say(sprintf("Data dimensions: %d genes x %d signatures", nrow(mat), ncol(mat)))
+
+  if (!nrow(mat) || !ncol(mat)) stop("No matching genes or signatures in GCTX file")
+  expression_data <- as.data.frame(mat)
+  rownames(expression_data) <- genes$genenames[match(rownames(mat), genes$rid)]
+
+  # Metadata rows follow the column order of the expression data
+  full_siginfo <- sig_info[match(colnames(expression_data), sig_info$sig_id), ]
+  metadata <- .simplify_siginfo(full_siginfo)
+
+  result <- data.frame(gene_symbol = rownames(expression_data), expression_data,
+                       check.names = FALSE)
+  attr(result, "metadata") <- metadata
+  attr(result, "full_siginfo") <- full_siginfo
+
+  say("\nSuccessfully extracted data:\n",
+      sprintf("  - %d genes\n", nrow(result)),
+      sprintf("  - %d signatures\n", ncol(result) - 1L),
+      "  - Metadata includes: ", paste(names(metadata), collapse = ", "))
+  result
+}
+
+#' Apply the quality filter and signature limit to a siginfo table
+#' @param sig_info Siginfo data frame.
+#' @param filter_quality Whether to keep only \code{is_hiq == 1} rows.
+#' @param max_signatures Maximum number of signatures, or \code{NULL}.
+#' @param verbose Whether to print progress messages.
+#' @return The filtered data frame. Errors when \code{sig_id} is missing or
+#'   no signature is left.
+#' @keywords internal
+.filter_siginfo <- function(sig_info, filter_quality, max_signatures, verbose) {
+  say <- function(...) if (verbose) message(...)
+
   if (filter_quality) {
     original_count <- nrow(sig_info)
-    
-    # Filter for high quality
     if ("is_hiq" %in% names(sig_info)) {
       sig_info <- sig_info[sig_info$is_hiq == 1, ]
-      if (verbose) message("Filtered to high-quality signatures: ", nrow(sig_info), " signatures")
+      say("Filtered to high-quality signatures: ", nrow(sig_info), " signatures")
     } else {
       warning("Column 'is_hiq' not found in siginfo file")
     }
-    
-    if (verbose && original_count > nrow(sig_info)) {
-      message("Quality filtering reduced signatures from ", original_count, " to ", nrow(sig_info))
+    if (original_count > nrow(sig_info)) {
+      say("Quality filtering reduced signatures from ", original_count, " to ",
+          nrow(sig_info))
     }
   }
-  
-  # Check if sig_id column exists
+
   if (!"sig_id" %in% names(sig_info)) {
     stop("Required column 'sig_id' not found in siginfo file")
   }
-  
-  # Limit number of signatures if requested
   if (!is.null(max_signatures) && nrow(sig_info) > max_signatures) {
     sig_info <- sig_info[seq_len(max_signatures), ]
-    if (verbose) message("Limited to first ", max_signatures, " signatures")
+    say("Limited to first ", max_signatures, " signatures")
   }
-  
-  # Get all signature IDs
-  all_cids <- sig_info$sig_id
-  
-  if (length(all_cids) == 0) {
-    stop("No signatures found to process after filtering")
+  if (nrow(sig_info) == 0) stop("No signatures found to process after filtering")
+  sig_info
+}
+
+#' Report the distinct values of one siginfo column
+#' @param sig_info Siginfo data frame.
+#' @param col Column name; nothing is reported when it is absent.
+#' @param label Label used in the message.
+#' @param max_shown Maximum number of values listed.
+#' @return NULL, invisibly.
+#' @keywords internal
+.message_column_summary <- function(sig_info, col, label, max_shown = Inf) {
+  if (!col %in% names(sig_info)) return(invisible())
+  values <- names(table(sig_info[[col]]))
+  message(label, ": ", paste(utils::head(values, max_shown), collapse = ", "),
+          if (length(values) > max_shown) "...")
+}
+
+#' Reduce a siginfo table to the metadata columns used downstream
+#' @param sig_info Siginfo data frame.
+#' @return Data frame with \code{sample_id} and, when present in
+#'   \code{sig_info}, \code{time}, \code{dose}, \code{cell},
+#'   \code{pert_name}, \code{pert_type} and \code{is_hiq}.
+#' @keywords internal
+.simplify_siginfo <- function(sig_info) {
+  renamed <- c(time = "pert_itime", dose = "pert_idose", cell = "cell_iname",
+               pert_name = "pert_iname", pert_type = "pert_type",
+               is_hiq = "is_hiq")
+  renamed <- renamed[renamed %in% names(sig_info)]
+  metadata <- data.frame(sample_id = sig_info$sig_id)
+  for (new_name in names(renamed)) {
+    metadata[[new_name]] <- sig_info[[renamed[[new_name]]]]
   }
-  
-  if (verbose) {
-    message("\nProcessing ", length(all_cids), " signatures from siginfo file")
-    
-    # Show distribution of key parameters if available
-    if ("pert_itime" %in% names(sig_info)) {
-      time_table <- table(sig_info$pert_itime)
-      message("Time points: ", paste(names(time_table), collapse = ", "))
-    }
-    if ("pert_idose" %in% names(sig_info)) {
-      dose_table <- table(sig_info$pert_idose)
-      message("Doses: ", paste(names(dose_table)[seq_len(min(5, length(dose_table)))], collapse = ", "),
-              if(length(dose_table) > 5) "..." else "")
-    }
-    if ("cell_iname" %in% names(sig_info)) {
-      cell_table <- table(sig_info$cell_iname)
-      message("Cell lines: ", paste(names(cell_table)[seq_len(min(10, length(cell_table)))], collapse = ", "),
-              if(length(cell_table) > 10) "..." else "")
-    }
-  }
-  
-  # Parse the gctx file using all signature IDs
-  if (verbose) {
-    message("\n", paste(rep("=", 60), collapse = ""))
-    message("NOTE: Extracting data from GCTX file...")
-    message("This step may take a long time depending on the number of")
-    message("signatures (", length(all_cids), ") and the size of the GCTX file.")
-    message("Please be patient and do not interrupt the process.")
-    message(paste(rep("=", 60), collapse = ""), "\n")
-  }
-  
-  mat <- tryCatch({
-    fast_parse_gctx(
-      fname = gctx_file,
-      cid = all_cids,
-      rid = rid
-    )
-  }, error = function(e) {
-    stop("Error reading GCTX file: ", e$message)
-  })
-  
-  if (verbose) message(sprintf("Data dimensions: %d genes x %d signatures", nrow(mat), ncol(mat)))
-  
-  # Convert to data frame and set row names as gene names
-  expression_data <- as.data.frame(mat)
-  rownames(expression_data) <- genenames
-  
-  # Create metadata from sig_info
-  # Match the order of signatures in the expression data
-  metadata <- sig_info[match(colnames(expression_data), sig_info$sig_id), ]
-  
-  # Create a simplified metadata data frame with key columns
-  metadata_df <- data.frame(
-    sample_id = metadata$sig_id,
-    stringsAsFactors = FALSE
-  )
-  
-  # Add optional metadata columns if they exist
-  optional_cols <- list(
-    time = "pert_itime",
-    dose = "pert_idose",
-    cell = "cell_iname",
-    pert_name = "pert_iname",
-    pert_type = "pert_type",
-    is_hiq = "is_hiq"
-  )
-  
-  for (new_name in names(optional_cols)) {
-    old_name <- optional_cols[[new_name]]
-    if (old_name %in% names(metadata)) {
-      metadata_df[[new_name]] <- metadata[[old_name]]
-    }
-  }
-  
-  # Add gene symbols as first column
-  final_result <- data.frame(
-    gene_symbol = rownames(expression_data),
-    expression_data,
-    check.names = FALSE,
-    stringsAsFactors = FALSE
-  )
-  
-  # Add metadata as attribute
-  attr(final_result, "metadata") <- metadata_df
-  
-  # Add full siginfo as attribute for reference
-  attr(final_result, "full_siginfo") <- metadata
-  
-  if (verbose) {
-    message(sprintf("\nSuccessfully extracted data:"))
-    message(sprintf("  - %d genes", nrow(final_result)))
-    message(sprintf("  - %d signatures", ncol(final_result) - 1))  # -1 for gene_symbol column
-    message(sprintf("  - Metadata includes: %s", paste(names(metadata_df), collapse = ", ")))
-  }
-  
-  return(final_result)
+  metadata
 }

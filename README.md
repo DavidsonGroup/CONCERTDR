@@ -103,6 +103,37 @@ summary(res)
 head(res$results$ks)
 ```
 
+`direction` controls only the order in which hits are ranked and picked:
+`"reversal"` (the default) puts the lowest scores first, `"mimic"` the highest
+first. It never removes a result because of its sign. The same argument is
+available in `process_signature_with_df()`, `annotate_drug_results()`,
+`extract_signature_zscores()`, and `plot_signature_direction_tile_barcode()`.
+Pass your chosen direction to each stage; `plot(res)` uses the direction saved
+in the result object.
+
+```r
+direction <- "mimic"  # use "reversal" for disease-signature reversal
+res <- process_signature_with_df(
+  sig_file, reference_df, methods = "ks", permutations = 10,
+  direction = direction
+)
+z <- extract_signature_zscores(
+  res$results$ks, sig_file, reference_df = reference_df,
+  direction = direction
+)
+plot_signature_direction_tile_barcode(precomputed = z)
+```
+
+Per-method results, `tech_view_all`, the wetlab views and the context summary
+all keep every finite score. `direction` does not change p-values; CamSum's
+one-sided hypothesis is controlled separately by `camsum_alternative`.
+
+Cross-method summaries use each hit's rank percentile among all profiles of its
+method (`rank_percentile`) to compute `global_rank`, so differently scaled
+scores are not compared directly. These ranks are relative hit orderings, not
+combined significance estimates. Wetlab drug views report the best context's
+actual cell, time and optional dose.
+
 The bundled example data also support z-score extraction and plotting directly
 from `example_reference_df.csv`:
 
@@ -214,6 +245,18 @@ reference_df <- extract_cmap_data_from_siginfo(
 
 ### Step 4 — Score, annotate, and visualise
 
+To include inferred genes in Step 3, set `landmark = FALSE`. Duplicate symbols
+are resolved using `landmark > best inferred > inferred > other`; ties keep
+the first input row. A warning identifies dropped and retained gene IDs.
+For LINCS2020, this retains MIA2 gene ID 4253 instead of 117153 and returns
+12,327 unique symbols when all features are available. Direct heatmap extraction
+and CamSum library calculations use the same feature preference.
+
+When multiple compoundinfo rows describe the same drug, annotation combines
+distinct nonblank targets and MOAs with `; `, without multiplying signature
+rows or context counts. The two annotation columns are independent lists,
+not positional target-MOA pairs.
+
 #### 4a. Score the signature
 
 `signature_file` accepts a file path **or** a data frame:
@@ -230,7 +273,7 @@ results <- process_signature_with_df(
 )
 
 print(results)            # brief overview
-summary(results)          # top hits across methods
+summary(results)          # top hits across methods (lowest scores first by default)
 head(results$results$ks)
 ```
 

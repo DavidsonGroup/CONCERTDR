@@ -9,10 +9,11 @@ None; this is an internal documentation topic.
 \description{
 Self-contained implementations of connectivity scoring methods for matching
 disease gene expression signatures to compound-induced gene expression
-profiles. 
+profiles.
 
-All seven methods share a common permutation-based framework for computing
-p-values and BH-adjusted p-values.
+The seven permutation-based methods share one framework
+(\code{.permutation_test}) for computing p-values and adjusted p-values.
+CamSum uses an analytic null instead; see \code{score_camsum}.
 }
 \references{
 Lamb J et al. Science, 2006, 313(5795): 1929-1935 (KS method).

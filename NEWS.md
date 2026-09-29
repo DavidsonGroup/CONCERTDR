@@ -1,3 +1,81 @@
+# CONCERTDR 0.99.4
+
+## Breaking changes
+
+* New `direction` argument (`"reversal"` by default, or `"mimic"`) in
+  `process_signature_with_df()`, `annotate_drug_results()`,
+  `extract_signature_zscores()` and `plot_signature_direction_tile_barcode()`.
+  It only orders results: `"reversal"` ranks the lowest scores first,
+  `"mimic"` the highest first. No result is dropped by the sign of its score,
+  and p-values are unchanged. The default now ranks the lowest scores first
+  everywhere; the cross-method summary previously put the highest scores
+  first.
+* Cross-method `global_rank` now ranks each hit's rank percentile among all
+  profiles of its method (`rank_percentile`), avoiding comparisons of
+  incompatible raw score scales. It is a relative ordering of method-specific
+  hits, not a combined p-value.
+* Wetlab drug rows now retain the complete best-scoring context rather than
+  combining its score with another context's dose or time.
+* `annotate_drug_results()` no longer has the `drug_info_file`,
+  `fuzzy_threshold` and `perfect_match_only` arguments; they were deprecated
+  and ignored.
+* `extract_cmap_data_from_siginfo()` no longer has the `keep_all_genes`
+  argument, which was never used.
+* `process_signature_with_df()` now validates `read_method` with `match.arg()`
+  instead of silently falling back to `read.delim()` for unknown values.
+* File-reading errors now name the offending argument (for example
+  `geneinfo_file not found: ...`) consistently across the package.
+
+## Bug fixes
+
+* Fix GitHub issue #3: duplicate gene symbols in geneinfo (including LINCS2020
+  MIA2) are resolved by preferring `landmark > best inferred > inferred > other`,
+  with input order breaking ties. A warning names the discarded and retained
+  gene IDs. Extraction, direct heatmap lookup and CamSum library rho estimation
+  use the same rule, so `landmark = FALSE` can use the full feature space.
+* GCTX reads now use sorted, unique indices on both axes and explicitly restore
+  the requested order, including repeats, before assigning labels.
+* Compound annotation retains all distinct nonblank target and MOA values
+  across rows of the same `pert_id`, joined with `; `, instead of keeping only
+  the first row. Signature row counts and context counts are preserved.
+* CamSum metadata is read only when CamSum runs, inside its method-level
+  error handler, so malformed CamSum configuration cannot stop other methods.
+* The shared table reader selects columns during `fread()` rather than
+  allocating the entire metadata table first.
+* GCTX extraction maps gene symbols to actual returned gene IDs and handles
+  absent genes/signatures. Empty extractions produce explicit errors.
+* Regex compound-ID extraction preserves unmatched entries and vector length.
+* Direct barcode plotting forwards `split_direction` to extraction; one-gene
+  matrices preserve dimensions and single-profile plots skip row clustering.
+* Query gene coverage now consistently reports the full query overlap:
+  `topN` in XCos/XSum limits reference-profile extremes, not query genes.
+
+* `process_signature_with_df()`: when a scoring method fails, its error is now
+  recorded in `results` (a one-row data frame with an `error` column, which
+  `print()` and `plot()` already expected). Before, the error handler only
+  modified a local copy, so the method silently disappeared from the results.
+* `process_combinations_file()` could not read tab-separated combination files
+  whose values contain spaces (such as `24 h`), including the file built in its
+  own example; it now reads them with an explicit tab separator.
+* `subset_siginfo_beta()`: `preview N` on the last filter column no longer
+  lists that column's own options as "downstream" options.
+
+## Internal changes
+
+* Scoring methods share one permutation framework (`.permutation_test()`);
+  `score_gsea0/1/2` are one weighted implementation, with results and random
+  number streams identical to before.
+* GCTX reading is shared between `fast_parse_gctx()` and CamSum
+  (`.gctx_ids()`, `.gctx_read_matrix()`).
+* `plot_signature_direction_tile_barcode()` builds every panel with a single
+  `.barcode_panel()` helper, and
+  `extract_signature_zscores()`, `annotate_drug_results()` and
+  `subset_siginfo_beta()` are split into small documented helpers.
+* New `R/utils.R` with the shared table reader `.read_cmap_table()`; removed
+  the `requireNamespace("data.table")` fallbacks (`data.table` is an Import),
+  the `.onLoad()` dependency check, the empty `R/cmap_download.R`, an orphaned
+  roxygen block in `R/signature_matching.R` and a committed build tarball.
+
 # CONCERTDR 0.99.3
 
 ## New features

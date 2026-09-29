@@ -1,7 +1,7 @@
 Package: CONCERTDR
 Type: Package
 Title: Drug Response Data Analysis Using CMap Database
-Version: 0.99.3
+Version: 0.99.4
 Authors@R: c(
     person("Hengxin", "Pan",
         email = "pan.h@wehi.edu.au",
@@ -31,7 +31,6 @@ Description: Provides a complete pipeline for drug repurposing analysis using
     correlation-adjusted sum score with an analytic p-value, is also provided.
 License: MIT + file LICENSE
 Encoding: UTF-8
-RoxygenNote: 7.3.3
 URL: https://github.com/DavidsonGroup/CONCERTDR
 BugReports: https://github.com/DavidsonGroup/CONCERTDR/issues
 Depends:
@@ -58,3 +57,4 @@ biocViews:
     Software,
     Transcriptomics,
     DataImport
+Config/roxygen2/version: 8.1.0

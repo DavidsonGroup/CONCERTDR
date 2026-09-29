@@ -259,7 +259,7 @@ test_that("create_summary_from_results skips methods with errors", {
                            error = character(0))
   good_result <- data.frame(
     compound = c("drugA","drugB"),
-    Score    = c(0.8, 0.3),
+    Score    = c(-0.8, -0.3),
     pValue   = c(0.01, 0.2),
     rank     = 1:2
   )
@@ -267,12 +267,13 @@ test_that("create_summary_from_results skips methods with errors", {
     list(bad_method = bad_result, good_method = good_result),
     top_n = 2
   )
+  expect_equal(nrow(out), 2L)
   expect_true(all(out$method == "good_method"))
 })
 
 test_that("create_summary_from_results includes global_rank column", {
   r1 <- data.frame(compound = c("A","B","C"),
-                   Score = c(0.9, 0.5, 0.1),
+                   Score = c(-0.9, -0.5, -0.1),
                    pValue = c(0.01, 0.1, 0.5),
                    rank = 1:3)
   out <- CONCERTDR:::create_summary_from_results(list(ks = r1), top_n = 3)
@@ -283,12 +284,12 @@ test_that("create_summary_from_results includes global_rank column", {
 test_that("create_summary_from_results respects top_n", {
   r1 <- data.frame(
     compound = paste0("drug", 1:20),
-    Score    = runif(20),
+    Score    = -runif(20),
     pValue   = runif(20),
     rank     = 1:20
   )
   out <- CONCERTDR:::create_summary_from_results(list(ks = r1), top_n = 5)
-  expect_lte(nrow(out), 5)
+  expect_equal(nrow(out), 5L)
 })
 
 # ── S3 methods ────────────────────────────────────────────────────────────────

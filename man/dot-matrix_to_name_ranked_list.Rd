@@ -2,7 +2,7 @@
 % Please edit documentation in R/scoring_methods.R
 \name{.matrix_to_name_ranked_list}
 \alias{.matrix_to_name_ranked_list}
-\title{Convert expression matrix to sorted gene-name lists (for KS / GSEA-w0)}
+\title{Convert expression matrix to sorted gene-name lists (for KS)}
 \usage{
 .matrix_to_name_ranked_list(refMatrix)
 }
@@ -13,6 +13,6 @@
 List of character vectors ordered decreasingly by expression for each sample.
 }
 \description{
-Convert expression matrix to sorted gene-name lists (for KS / GSEA-w0)
+Convert expression matrix to sorted gene-name lists (for KS)
 }
 \keyword{internal}

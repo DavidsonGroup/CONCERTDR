@@ -10,7 +10,6 @@ extract_cmap_data_from_siginfo(
   gctx_file = "level5_beta_trt_cp_n720216x12328.gctx",
   max_signatures = NULL,
   filter_quality = TRUE,
-  keep_all_genes = TRUE,
   verbose = TRUE,
   landmark = TRUE
 )
@@ -24,9 +23,8 @@ extract_cmap_data_from_siginfo(
 
 \item{max_signatures}{Integer; maximum number of signatures to process (default: NULL for all)}
 
-\item{filter_quality}{Logical; whether to filter for pert_type="trt_cp" and is_hiq=1 (default: TRUE)}
-
-\item{keep_all_genes}{Logical; whether to keep all genes (TRUE) or only common genes (FALSE) (default: TRUE)}
+\item{filter_quality}{Logical; whether to keep only high-quality signatures
+(\code{is_hiq == 1}) (default: TRUE)}
 
 \item{verbose}{Logical; whether to print progress messages (default: TRUE)}
 
@@ -40,6 +38,14 @@ A data frame with expression data for all signatures, with annotation
 Extract expression data from CMap GCTX files using all signatures
 present in the provided siginfo file. This function processes all signatures
 found in the siginfo file without requiring a configuration file.
+}
+\details{
+Duplicate gene symbols are resolved by preferring landmark,
+  then best inferred, then inferred features. Other feature spaces rank
+  last and ties retain the first input row. A warning lists discarded and
+  retained gene IDs. Gene symbols are not renamed or averaged. GCTX data
+  are read in sorted index order and restored to the requested gene and
+  signature order explicitly.
 }
 \examples{
 # Build a tiny GCTX file so the example is self-contained and runnable.

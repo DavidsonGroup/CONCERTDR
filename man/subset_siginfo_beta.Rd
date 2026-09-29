@@ -39,8 +39,7 @@ ex_sig <- data.frame(
   pert_type = c("trt_cp", "trt_cp", "trt_sh"),
   pert_itime = c("6 h", "24 h", "24 h"),
   pert_idose = c("10 uM", "10 uM", "5 uM"),
-  cell_iname = c("A375", "MCF7", "A375"),
-  stringsAsFactors = FALSE
+  cell_iname = c("A375", "MCF7", "A375")
 )
 ex_sig_file <- tempfile(fileext = ".txt")
 write.table(ex_sig, ex_sig_file, sep = "\t", row.names = FALSE, quote = FALSE)

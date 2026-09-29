@@ -20,7 +20,8 @@ extract_signature_zscores(
   max_perts = 60,
   split_direction = FALSE,
   output_zscores = NULL,
-  verbose = TRUE
+  verbose = TRUE,
+  direction = c("reversal", "mimic")
 )
 }
 \arguments{
@@ -72,6 +73,12 @@ down-regulated then up-regulated, matching the layout expected by
 to skip.}
 
 \item{verbose}{Logical; print progress messages.}
+
+\item{direction}{Order in which perturbations are picked by score:
+\code{"reversal"} (default) lowest first, \code{"mimic"} highest first.
+No perturbation is excluded by the sign of its score. Precomputed
+matrices are plotted as supplied; choose the direction when extracting
+them.}
 }
 \value{
 A named list with elements:

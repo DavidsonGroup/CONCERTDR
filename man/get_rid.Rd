@@ -2,17 +2,19 @@
 % Please edit documentation in R/cmap_extract.R
 \name{get_rid}
 \alias{get_rid}
-\title{Get Gene IDs and Gene Names for Landmark Genes}
+\title{Get Unique Gene IDs and Gene Names}
 \usage{
 get_rid(geneinfo_df, landmark = TRUE)
 }
 \arguments{
 \item{geneinfo_df}{Data frame containing gene information}
+
+\item{landmark}{Restrict to landmark genes before resolving duplicate symbols.}
 }
 \value{
 List with rid (gene IDs) and genenames (gene symbols)
 }
 \description{
-Get Gene IDs and Gene Names for Landmark Genes
+Get Unique Gene IDs and Gene Names
 }
 \keyword{internal}

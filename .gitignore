@@ -4,4 +4,4 @@
 .Ruserdata
 .DS_Store
 .gitignore
-DR.Rproj
+DR.Rproj*.tar.gz

@@ -317,6 +317,13 @@ test_that("annotate_drug_results errors if sig_info_file path is missing", {
   )
 })
 
+test_that("annotate_drug_results no longer accepts the removed deprecated arguments", {
+  for (arg in c("drug_info_file", "fuzzy_threshold", "perfect_match_only")) {
+    expect_error(do.call(run_annotate, stats::setNames(list(NULL), arg)),
+                 "unused argument")
+  }
+})
+
 # ── extract_compound_id ──────────────────────────────────────────────────────
 
 test_that("extract_compound_id split_colon extracts the second field", {

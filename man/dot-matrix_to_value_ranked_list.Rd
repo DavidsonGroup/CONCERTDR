@@ -2,7 +2,7 @@
 % Please edit documentation in R/scoring_methods.R
 \name{.matrix_to_value_ranked_list}
 \alias{.matrix_to_value_ranked_list}
-\title{Convert expression matrix to sorted named-value lists (for GSEA-w1/w2)}
+\title{Convert expression matrix to sorted named-value lists (for GSEA)}
 \usage{
 .matrix_to_value_ranked_list(refMatrix)
 }
@@ -13,6 +13,6 @@
 List of named numeric vectors ordered decreasingly by expression for each sample.
 }
 \description{
-Convert expression matrix to sorted named-value lists (for GSEA-w1/w2)
+Convert expression matrix to sorted named-value lists (for GSEA)
 }
 \keyword{internal}

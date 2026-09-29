@@ -14,7 +14,8 @@ process_signature_with_df(
   read_method = "auto",
   save_files = FALSE,
   camsum_alternative = c("two.sided", "greater", "less"),
-  camsum_rho_bar = NULL
+  camsum_rho_bar = NULL,
+  direction = c("reversal", "mimic")
 )
 }
 \arguments{
@@ -35,7 +36,8 @@ permutation methods)
 Options: "ks", "xcos", "xsum", "gsea0", "gsea1", "gsea2", "zhang",
 "camsum". "camsum" is not run by default; add it explicitly.}
 
-\item{topN}{Integer; number of top-ranked genes to use for XCos and XSum methods (default: 4)}
+\item{topN}{Integer; number of top and bottom genes retained from each
+reference profile for XCos and XSum (default: 4). Does not truncate the query.}
 
 \item{read_method}{Character; method to use for reading signature file ("auto", "fread", or "read.table") (default: "auto")}
 
@@ -53,6 +55,13 @@ every profile of the same perturbation type in the GCTX file (options
 \code{"metadata"} attribute of \code{reference_df} or from siginfo), and
 otherwise on \code{reference_df} with a warning. Ignored by other
 methods.}
+
+\item{direction}{Ordering of hits: \code{"reversal"} (default) ranks the
+lowest scores first, \code{"mimic"} the highest first. It only orders
+\code{rank}, the summary and \code{plot()}; no result is dropped by the
+sign of its score, and p-values and \code{camsum_alternative} are
+unaffected. Cross-method \code{global_rank} compares each hit's rank
+percentile among all profiles of its method, not raw score magnitudes.}
 }
 \value{
 A structured list containing:
