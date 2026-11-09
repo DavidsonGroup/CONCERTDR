@@ -1,4 +1,4 @@
-# CONCERTDR 0.99.4
+# CONCERTDR 0.99.5
 
 ## Performance
 
@@ -34,6 +34,11 @@
   (`kU = kD`) and of profiles with mean zero are unchanged; otherwise scores
   and p-values change, and the score no longer depends on a constant shift of
   a profile.
+
+# CONCERTDR 0.99.4
+
+## Breaking changes
+
 * New `direction` argument (`"reversal"` by default, or `"mimic"`) in
   `process_signature_with_df()`, `annotate_drug_results()`,
   `extract_signature_zscores()` and `plot_signature_direction_tile_barcode()`.

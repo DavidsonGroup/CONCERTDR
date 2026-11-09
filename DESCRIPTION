@@ -1,7 +1,7 @@
 Package: CONCERTDR
 Type: Package
 Title: Drug Response Data Analysis Using CMap Database
-Version: 0.99.4
+Version: 0.99.5
 Authors@R: c(
     person("Hengxin", "Pan",
         email = "pan.h@wehi.edu.au",
