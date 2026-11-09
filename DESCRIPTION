@@ -37,6 +37,7 @@ Depends:
     R (>= 4.5.0)
 Imports:
     data.table,
+    matrixStats,
     rhdf5,
     stats,
     utils
