@@ -44,14 +44,21 @@ Data frame with Score, pValue, pAdjValue per sample. Attributes
 \description{
 Correlation-adjusted sum of reference z-scores over the query genes, with an
 analytic standard-normal p-value (no permutations). For profile \eqn{i}
-with standard deviation \eqn{s_i} over all genes of \code{refMatrix} and a
-query of \eqn{k = k_U + k_D} genes found in \code{refMatrix},
-\deqn{T_i = \frac{\sum_{g \in U} z_{gi} - \sum_{g \in D} z_{gi}}
+with mean \eqn{\bar v_i} and standard deviation \eqn{s_i} over all genes of
+\code{refMatrix} and a query of \eqn{k = k_U + k_D} genes found in
+\code{refMatrix},
+\deqn{T_i = \frac{\sum_{g \in U} z_{gi} - \sum_{g \in D} z_{gi}
+                   - (k_U - k_D)\,\bar v_i}
                  {s_i \sqrt{k \cdot \mathrm{VIF}}}, \qquad
       \mathrm{VIF} = \max\{1,\ 1 + (k - 1)\bar\rho\}.}
-The floor at 1 matches \code{limma::camera} with
-\code{allow.neg.cor = FALSE}. Positive scores mean the profile mimics the
-query, negative scores mean it reverses it.
+The subtracted term centres the sum at its expectation when the query genes
+behave like random genes of the profile: each gene then has mean
+\eqn{\bar v_i}, so the up-minus-down sum has expectation
+\eqn{(k_U - k_D)\bar v_i}. It vanishes when \eqn{k_U = k_D} or
+\eqn{\bar v_i = 0}, and it makes the score unchanged when a constant is
+added to every gene of a profile. The floor at 1 matches
+\code{limma::camera} with \code{allow.neg.cor = FALSE}. Positive scores mean
+the profile mimics the query, negative scores mean it reverses it.
 }
 \details{
 \eqn{\bar\rho} is taken, in order of preference, from \code{rho_bar}; from

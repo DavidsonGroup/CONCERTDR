@@ -2,6 +2,12 @@
 
 ## Breaking changes
 
+* CamSum scores are now centred: the numerator subtracts `(kU - kD)` times the
+  profile mean, the expectation of the up-minus-down sum when the query genes
+  behave like random genes of the profile. Scores of balanced queries
+  (`kU = kD`) and of profiles with mean zero are unchanged; otherwise scores
+  and p-values change, and the score no longer depends on a constant shift of
+  a profile.
 * New `direction` argument (`"reversal"` by default, or `"mimic"`) in
   `process_signature_with_df()`, `annotate_drug_results()`,
   `extract_signature_zscores()` and `plot_signature_direction_tile_barcode()`.

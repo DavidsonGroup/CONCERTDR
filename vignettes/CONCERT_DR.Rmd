@@ -348,6 +348,8 @@ plot(results_ge, method = "xsum", plot_type = "scores", top_n = 20)
 ## CamSum: analytic p-values without permutations
 
 `camsum` sums the reference z-scores of the query genes (up minus down),
+subtracts the value that sum would have for random genes of the profile
+(`(kU - kD)` times the profile mean, which is zero for balanced queries),
 divides by each profile's standard deviation, and corrects for the average
 correlation among the query genes across the library
 (`VIF = max(1, 1 + (k - 1) * rho_bar)`). The p-value comes from the standard

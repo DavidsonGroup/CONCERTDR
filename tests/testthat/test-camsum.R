@@ -58,14 +58,15 @@ test_that("streaming rho_bar equals the brute-force k x k correlation", {
   expect_equal(attr(r, "kD"), 15L)
 })
 
-test_that("score follows T = (sum_U z - sum_D z) / (s_i sqrt(k VIF))", {
+test_that("score follows T = (sum_U z - sum_D z - (kU - kD) v_i) / (s_i sqrt(k VIF))", {
   X <- make_ref()
   res <- score_local(X, up, down)
   rho <- brute_rho(X, up, down)
   vif <- max(1, 1 + (35 - 1) * rho)
   s <- apply(X, 2, stats::sd)
   expect_equal(res$Score,
-               unname((colSums(X[up, ]) - colSums(X[down, ])) /
+               unname((colSums(X[up, ]) - colSums(X[down, ]) -
+                         (length(up) - length(down)) * colMeans(X)) /
                         (s * sqrt(35 * vif))),
                tolerance = 1e-12)
   expect_equal(unname(attr(res, "VIF")), vif)
@@ -170,7 +171,8 @@ test_that("rho_bar comes from the full library in the GCTX for any subset", {
   s <- apply(mix, 2, stats::sd)
   vif <- attr(res2, "VIF")[rep(c("trt_oe", "trt_xpr"), each = 10)]
   expect_equal(res2$Score,
-               unname((colSums(mix[up, ]) - colSums(mix[down, ])) /
+               unname((colSums(mix[up, ]) - colSums(mix[down, ]) -
+                         (length(up) - length(down)) * colMeans(mix)) /
                         (s * sqrt(35 * vif))), tolerance = 1e-12)
 
   # a smaller gene space: s_i is taken over the reference's own genes
@@ -230,4 +232,26 @@ test_that("process_signature_with_df runs camsum and keeps its settings", {
   # default methods are unchanged and do not include camsum
   default_methods <- eval(formals(process_signature_with_df)$methods)
   expect_false("camsum" %in% default_methods)
+})
+
+test_that("the score is centred: adding a constant to a profile does not change it", {
+  X <- make_ref()
+  shifted <- X
+  shifted[, 4] <- shifted[, 4] + 5
+  # kU != kD, so an uncentred sum would move by (kU - kD) * 5
+  a <- CONCERTDR:::score_camsum(X, up, down, rho_bar = 0.05)
+  b <- CONCERTDR:::score_camsum(shifted, up, down, rho_bar = 0.05)
+  expect_equal(b$Score, a$Score, tolerance = 1e-10)
+})
+
+test_that("centring has no effect when the query is balanced", {
+  X <- make_ref()
+  u <- up[1:10]
+  d <- down[1:10]
+  s <- apply(X, 2, stats::sd)
+  res <- CONCERTDR:::score_camsum(X, u, d, rho_bar = 0.05)
+  vif <- max(1, 1 + 19 * 0.05)
+  expect_equal(res$Score,
+               unname((colSums(X[u, ]) - colSums(X[d, ])) / (s * sqrt(20 * vif))),
+               tolerance = 1e-12)
 })
