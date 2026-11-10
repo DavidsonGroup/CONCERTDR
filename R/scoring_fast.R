@@ -39,7 +39,8 @@
 
 #' Turn permutation exceedance counts into a result data frame
 #' @param score Observed scores.
-#' @param count Number of permutations with \code{|permuted| >= |observed|}.
+#' @param count Number of permutations with \code{|permuted| >= |observed|},
+#'   ties up to rounding included (see \code{.tie_floor}).
 #' @param permuteNum Number of permutations.
 #' @param pAdjMethod P-value adjustment method.
 #' @param sample_names Row names of the result.
@@ -162,7 +163,7 @@
     for (draw in draws) {
       perm <- score(ctx, draw)
       perm[is.na(perm)] <- 0
-      hits <- hits + (abs(perm) >= abs(obs))
+      hits <- hits + (abs(perm) >= .tie_floor(obs))
     }
     count[cols] <- hits
   }
@@ -248,7 +249,7 @@
   null <- combined(spu, spd)
   null[is.na(null)] <- 0
   sorted_null <- sort(abs(null))
-  count <- permuteNum - findInterval(abs(observed), sorted_null, left.open = TRUE)
+  count <- permuteNum - findInterval(.tie_floor(observed), sorted_null, left.open = TRUE)
   .count_pvalues(observed, count, permuteNum, pAdjMethod, colnames(refMatrix))
 }
 

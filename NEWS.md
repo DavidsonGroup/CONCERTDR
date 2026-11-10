@@ -1,3 +1,15 @@
+# CONCERTDR 0.99.6
+
+## Bug fixes
+
+* Permutation p-values no longer depend on the platform. A permuted score
+  that equals the observed one up to rounding (relative difference below
+  `sqrt(.Machine$double.eps)`) now always counts as reaching it. Before,
+  summation order (for example long double accumulation on x86_64 Linux and
+  Windows) could flip such ties, so p-values for data with tied values
+  differed between platforms and between the vectorised and row-by-row
+  engines.
+
 # CONCERTDR 0.99.5
 
 ## Performance

@@ -90,7 +90,7 @@ NULL
 .permutation_pvalues <- function(score, permuteScoreMat, pAdjMethod = "BH",
                                  sample_names = NULL) {
   permuteScoreMat[is.na(permuteScoreMat)] <- 0
-  pValue <- rowSums(abs(permuteScoreMat) >= abs(score)) / ncol(permuteScoreMat)
+  pValue <- rowSums(abs(permuteScoreMat) >= .tie_floor(score)) / ncol(permuteScoreMat)
   out <- data.frame(Score = score, pValue = pValue,
                     pAdjValue = stats::p.adjust(pValue, method = pAdjMethod))
   if (!is.null(sample_names)) rownames(out) <- sample_names

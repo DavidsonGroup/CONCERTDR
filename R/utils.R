@@ -68,6 +68,20 @@
 #' @keywords internal
 .is_blank <- function(x) is.na(x) | !nzchar(as.character(x))
 
+#' Smallest absolute permuted score that counts as reaching the observed one
+#'
+#' Permuted scores within a relative tolerance of \code{sqrt(.Machine$double.eps)}
+#' of the observed score count as ties, so that permutation p-values do not
+#' depend on platform-specific rounding of sums (for example long double
+#' accumulation on x86_64).
+#' @param x Observed scores.
+#' @return Numeric vector, \code{|x|} minus the tolerance.
+#' @keywords internal
+.tie_floor <- function(x) {
+  x <- abs(x)
+  x - sqrt(.Machine$double.eps) * pmax(1, x)
+}
+
 #' Order rows by score in the requested connectivity direction
 #'
 #' Rows are only ordered, never dropped by the sign of the score; rows with a

@@ -32,10 +32,20 @@ test_that("methods with per-sample nulls reproduce the row-by-row results", {
     slow <- with_seed(7, cases[[name]](FALSE))
     expect_equal(rownames(fast), rownames(slow), info = name)
     expect_equal(fast$Score, slow$Score, tolerance = 1e-8, info = name)
-    # Same permuted gene sets for the same seed; a p-value may move by one
-    # permutation where a permuted score equals the observed one up to rounding
+    # Same permuted gene sets for the same seed, and both engines count ties
+    # up to rounding, so the p-values agree; one permutation is kept as margin
     expect_lte(max(abs(fast$pValue - slow$pValue)), 1 / B + 1e-12)
   }
+})
+
+test_that("permuted scores equal to the observed one up to rounding count as exceedances", {
+  # 0.1 + 0.2 is one ulp above 0.3, the kind of difference summation order
+  # makes between platforms
+  obs <- c(0.1 + 0.2, -(0.1 + 0.2))
+  perm <- matrix(c(0.3, -0.3, 0.29, 0.31), 2, 2)
+  expect_equal(.permutation_pvalues(obs, perm)$pValue, c(0.5, 1))
+  expect_true(all(abs(perm[, 1]) >= .tie_floor(obs)))
+  expect_false(abs(0.3 - 1e-6) >= .tie_floor(0.3))
 })
 
 test_that("KS scores match and its shared null gives the same p-value distribution", {

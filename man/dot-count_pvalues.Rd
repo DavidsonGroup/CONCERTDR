@@ -9,7 +9,8 @@
 \arguments{
 \item{score}{Observed scores.}
 
-\item{count}{Number of permutations with \code{|permuted| >= |observed|}.}
+\item{count}{Number of permutations with \code{|permuted| >= |observed|},
+ties up to rounding included (see \code{.tie_floor}).}
 
 \item{permuteNum}{Number of permutations.}
 
